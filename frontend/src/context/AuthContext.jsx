@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import api from '../services/api';
+import api, { API_BASE_URL, setupInterceptors } from '../services/api';
 import axios from 'axios';
 
 const AuthContext = createContext();
@@ -12,6 +12,9 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Inject the logout function into our global API client
+    setupInterceptors(logout);
+
     if (token) {
       api.get('/users/me')
         .then(res => setUser(res.data))
@@ -32,7 +35,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       // Auth endpoint requires form-urlencoded
-      const res = await axios.post(`http://${window.location.hostname}:8000/token`, formData, {
+      const res = await axios.post(`${API_BASE_URL}/token`, formData, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
 
@@ -41,17 +44,15 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', newToken);
     } catch (error) {
       if (error.response) {
-        // The server responded with a status code that falls out of the range of 2xx
         if (error.response.status === 401) {
-          throw new Error('INVALID_CREDENTIALS');
+          throw new Error('Incorrect username or password.');
         } else {
-          throw new Error('SERVER_ERROR');
+          throw new Error(error.response.data?.detail || 'Server error. Contact IT support.');
         }
       } else if (error.request) {
-        // The request was made but no response was received
-        throw new Error('NETWORK_ERROR');
+        throw new Error('Server unreachable. Check connection.');
       } else {
-        throw new Error('UNKNOWN_ERROR');
+        throw new Error('An unexpected error occurred.');
       }
     }
   };

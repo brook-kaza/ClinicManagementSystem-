@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Activity, Lock, User, ArrowRight } from 'lucide-react';
+import { Activity, Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
 
 const Login = () => {
     const [username, setUsername] = useState('');
@@ -16,110 +16,108 @@ const Login = () => {
         try {
             await login(username, password);
         } catch (err) {
-            console.error("Login attempt failed:", err.message);
-            if (err.message === 'INVALID_CREDENTIALS') {
-                setError('The username or password you entered is incorrect. Please try again.');
-            } else if (err.message === 'NETWORK_ERROR') {
-                setError('The server is currently unreachable. Please check your connection or ensure the backend is running.');
-            } else if (err.message === 'SERVER_ERROR') {
-                setError('The server encountered an error. Please contact clinical IT support.');
-            } else {
-                setError('An unexpected error occurred. Please try again later.');
-            }
+            setError(err.message || 'An unexpected error occurred.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden font-sans">
-            {/* Background elements */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-100 rounded-full blur-[120px] opacity-50"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary-200 rounded-full blur-[120px] opacity-30"></div>
+        <div className="min-h-screen flex items-center justify-center font-sans relative overflow-hidden bg-zinc-950">
+            {/* Ambient Background Glows */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-600/20 rounded-full blur-[120px] pointer-events-none"></div>
 
-            <div className="w-full max-w-lg z-10 animate-fade-in">
-                <div className="text-center mb-10">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-tr from-primary-600 to-primary-400 shadow-2xl shadow-primary-200 mb-6 rotate-3 hover:rotate-0 transition-transform duration-500">
-                        <Activity className="w-10 h-10 text-white" />
+            <div className="w-full max-w-[440px] mx-4 relative z-10 animate-slide-up">
+                {/* Brand Header */}
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 shadow-xl shadow-indigo-600/30 mb-6 border border-white/10">
+                        <Activity className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-4xl font-bold text-slate-900 tracking-tight font-display mb-2">
-                        Hani Dental <span className="text-primary-600">Pro</span>
-                    </h1>
-                    <p className="text-slate-500 font-medium">Enterprise Dental Management System</p>
+                    <h1 className="text-3xl font-bold text-white mb-2 font-heading tracking-tight">Hani Dental <span className="text-indigo-400">Pro</span></h1>
+                    <p className="text-zinc-400 text-sm font-medium">Secure Clinical Access</p>
                 </div>
 
-                <div className="glass-card rounded-[2rem] p-8 sm:p-12 border border-white/50 shadow-2xl">
-                    <div className="mb-8">
-                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h2>
-                        <p className="text-slate-500 text-sm">Please enter your credentials to access the clinic dashboard.</p>
-                    </div>
+                {/* Login Card */}
+                <div className="bg-zinc-900/80 backdrop-blur-xl border border-zinc-800/80 rounded-3xl shadow-2xl p-8 sm:p-10 relative overflow-hidden">
+                    {/* Subtle top highlight */}
+                    <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
 
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         {error && (
-                            <div className="bg-red-50 border border-red-100 text-red-700 px-4 py-3 rounded-xl text-sm font-medium animate-fade-in">
-                                {error}
+                            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start gap-3 animate-fade-in">
+                                <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                                    <span className="text-red-400 text-xs font-bold">!</span>
+                                </div>
+                                <p className="text-sm text-red-400 font-medium leading-relaxed">{error}</p>
                             </div>
                         )}
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Username</label>
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <User className="h-5 w-5 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
+                        <div className="space-y-4">
+                            <div>
+                                <label htmlFor="username" className="block text-sm font-semibold text-zinc-300 mb-2 pl-1">
+                                    Username
+                                </label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-500 group-focus-within:text-indigo-400 transition-colors">
+                                        <User className="h-[18px] w-[18px]" />
+                                    </div>
+                                    <input
+                                        id="username"
+                                        type="text"
+                                        required
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        className="w-full pl-11 pr-4 py-3.5 bg-zinc-950/50 border border-zinc-800 rounded-2xl text-sm font-medium text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-inner"
+                                        placeholder="Enter your username"
+                                        autoComplete="username"
+                                    />
                                 </div>
-                                <input
-                                    type="text"
-                                    required
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    className="block w-full pl-12 pr-4 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all sm:text-sm font-medium"
-                                    placeholder="your-username"
-                                />
+                            </div>
+
+                            <div>
+                                <label htmlFor="password" className="block text-sm font-semibold text-zinc-300 mb-2 pl-1">
+                                    Password
+                                </label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-500 group-focus-within:text-indigo-400 transition-colors">
+                                        <Lock className="h-[18px] w-[18px]" />
+                                    </div>
+                                    <input
+                                        id="password"
+                                        type="password"
+                                        required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full pl-11 pr-4 py-3.5 bg-zinc-950/50 border border-zinc-800 rounded-2xl text-sm font-medium text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all shadow-inner"
+                                        placeholder="••••••••"
+                                        autoComplete="current-password"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Password</label>
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Lock className="h-5 w-5 text-slate-400 group-focus-within:text-primary-500 transition-colors" />
-                                </div>
-                                <input
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="block w-full pl-12 pr-4 py-4 bg-slate-50/50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 transition-all sm:text-sm font-medium"
-                                    placeholder="••••••••"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="pt-2">
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full h-14 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-xl shadow-primary-200 transition-all active:scale-[0.98] disabled:opacity-70 disabled:active:scale-100 group"
-                            >
-                                {loading ? (
-                                    <>
-                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                        <span>Authenticating...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <span>Sign In to Dashboard</span>
-                                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                                    </>
-                                )}
-                            </button>
-                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-4 mt-2 bg-indigo-600 text-white font-semibold rounded-2xl shadow-[0_0_20px_rgba(79,70,229,0.3)] hover:bg-indigo-500 hover:shadow-[0_0_25px_rgba(79,70,229,0.5)] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-70 transition-all duration-300 flex items-center justify-center gap-2 group"
+                        >
+                            {loading ? (
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <>
+                                    <span>Sign In to System</span>
+                                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                </>
+                            )}
+                        </button>
                     </form>
                 </div>
 
-                <p className="text-center mt-10 text-slate-400 text-sm font-medium">
-                    &copy; {new Date().getFullYear()} Hani Dental Pro Management. All rights reserved.
-                </p>
+                <div className="flex items-center justify-center gap-2 mt-8 text-zinc-500 text-xs font-medium">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>End-to-End Encrypted Session</span>
+                </div>
             </div>
         </div>
     );

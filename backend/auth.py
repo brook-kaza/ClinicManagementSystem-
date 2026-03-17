@@ -16,11 +16,20 @@ from database import get_db
 load_dotenv()
 
 # Secret key for JWT signing.
-SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret-key-for-dev-only")
+SECRET_KEY = os.getenv("SECRET_KEY")
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
+
+if not SECRET_KEY:
+    if ENVIRONMENT == "production":
+        raise ValueError("CRITICAL ERROR: SECRET_KEY environment variable is not set in production!")
+    else:
+        # Development fallback
+        SECRET_KEY = "UNSET_REPLACE_ME_IMMEDIATELY_DEV_ONLY"
+
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60 * 24))
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/token")
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
@@ -45,10 +54,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
+        detail="Incorrect username or password",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -64,7 +73,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
-async def get_current_active_user(current_user: models.User = Depends(get_current_user)):
+def get_current_active_user(current_user: models.User = Depends(get_current_user)):
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user

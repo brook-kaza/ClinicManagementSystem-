@@ -1,287 +1,183 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { ShieldAlert, UserPlus, KeyRound, Shield, Ban, CheckCircle, Search, UserCheck, ShieldCheck, Mail, ShieldX } from 'lucide-react';
+import { UserPlus, KeyRound, Shield, Ban, UserCheck, ShieldX, UserCog, CircleCheck as CheckCircle } from 'lucide-react';
 
 const UserManagement = () => {
     const { user } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
-
-    // Forms state
-    const [newUser, setNewUser] = useState({ username: '', password: '', role: 'Receptionist' });
+    const [newUser, setNewUser] = useState({ username: '', full_name: '', password: '', role: 'Receptionist' });
     const [resetData, setResetData] = useState({ userId: null, newPassword: '' });
     const [message, setMessage] = useState('');
 
-    // Only Admin can view this page
+    const fetchUsers = async () => {
+        try { setLoading(true); const res = await api.get('/users'); setUsers(res.data); }
+        catch { setMessage('Failed to load users'); setTimeout(() => setMessage(''), 3000); }
+        finally { setLoading(false); }
+    };
+
+    useEffect(() => {
+        if (user?.role === 'Admin') fetchUsers();
+        else setLoading(false);
+    }, [user?.role]);
+
     if (user?.role !== 'Admin') {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-slate-50 font-sans animate-fade-in">
-                <div className="glass-card p-16 rounded-[3rem] border border-white max-w-lg shadow-2xl shadow-red-100/50">
-                    <div className="w-24 h-24 bg-red-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-inner border border-red-100">
-                        <ShieldX className="h-12 w-12 text-red-500" />
+            <div className="max-w-4xl mx-auto py-16 text-center font-sans animate-fade-in">
+                <div className="bg-white p-16 rounded-[2rem] border border-zinc-200 shadow-xl shadow-zinc-200/50">
+                    <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-100">
+                        <ShieldX className="h-12 w-12 text-red-400" />
                     </div>
-                    <h2 className="text-4xl font-bold text-slate-900 mb-4 tracking-tight font-display">Access Denied</h2>
-                    <p className="text-slate-500 mb-0 max-w-sm mx-auto text-lg leading-relaxed font-medium">
-                        You do not have the required permissions to view the System Administration module.
-                    </p>
-                    <div className="mt-10 pt-8 border-t border-slate-100">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Administrator Authentication Required</p>
-                    </div>
+                    <h2 className="text-3xl font-bold text-zinc-900 mb-3 font-heading tracking-tight">Access Restricted</h2>
+                    <p className="text-zinc-500 max-w-md mx-auto text-base leading-relaxed">Administrative privileges are required to access the User Management and Security module.</p>
                 </div>
             </div>
         );
     }
 
-    const fetchUsers = async () => {
-        try {
-            setLoading(true);
-            const res = await api.get('/users');
-            setUsers(res.data);
-        } catch (err) {
-            setMessage('Failed to load users');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchUsers();
-    }, []);
-
     const handleCreateUser = async (e) => {
         e.preventDefault();
-        try {
-            await api.post('/users', newUser);
-            setMessage('Account provisioned successfully');
-            setNewUser({ username: '', password: '', role: 'Receptionist' });
-            fetchUsers();
-            setTimeout(() => setMessage(''), 3000);
-        } catch (err) {
-            setMessage(err.response?.data?.detail || 'Provisioning failed');
-        }
+        try { await api.post('/users', newUser); setMessage('User account created successfully'); setNewUser({ username: '', full_name: '', password: '', role: 'Receptionist' }); fetchUsers(); setTimeout(() => setMessage(''), 3000); }
+        catch (err) { setMessage(err.response?.data?.detail || 'Account creation failed'); setTimeout(() => setMessage(''), 3000); }
     };
 
     const handleResetPassword = async (e) => {
         e.preventDefault();
-        try {
-            await api.put(`/users/${resetData.userId}/password`, { new_password: resetData.newPassword });
-            setMessage('Credentials reset successfully');
-            setResetData({ userId: null, newPassword: '' });
-            setTimeout(() => setMessage(''), 3000);
-        } catch (err) {
-            setMessage('Failed to reset password');
-        }
+        try { await api.put(`/users/${resetData.userId}/password`, { new_password: resetData.newPassword }); setMessage('Password reset successfully'); setResetData({ userId: null, newPassword: '' }); setTimeout(() => setMessage(''), 3000); }
+        catch { setMessage('Failed to reset password'); setTimeout(() => setMessage(''), 3000); }
     };
 
     const handleToggleStatus = async (targetUser) => {
-        try {
-            await api.put(`/users/${targetUser.id}/role`, { is_active: !targetUser.is_active });
-            fetchUsers();
-        } catch (err) {
-            setMessage(err.response?.data?.detail || 'Action failed');
-        }
+        try { await api.put(`/users/${targetUser.id}/role`, { is_active: !targetUser.is_active }); fetchUsers(); setMessage(`Account ${targetUser.is_active ? 'deactivated' : 'activated'}`); setTimeout(() => setMessage(''), 3000); }
+        catch { setMessage('Action failed'); setTimeout(() => setMessage(''), 3000); }
     };
 
     const handleRoleChange = async (targetUser, newRole) => {
-        try {
-            await api.put(`/users/${targetUser.id}/role`, { role: newRole });
-            fetchUsers();
-        } catch (err) {
-            setMessage(err.response?.data?.detail || 'Action failed');
-        }
-    }
+        try { await api.put(`/users/${targetUser.id}/role`, { role: newRole }); fetchUsers(); setMessage('Role updated'); setTimeout(() => setMessage(''), 3000); }
+        catch { setMessage('Role update failed'); setTimeout(() => setMessage(''), 3000); }
+    };
+
+    const inputCls = "w-full bg-zinc-50/50 border border-zinc-200 rounded-2xl py-4 px-5 text-sm font-medium text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all shadow-inner hover:border-zinc-300";
+    const labelCls = "block text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2.5 ml-1";
 
     return (
-        <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 font-sans animate-fade-in space-y-10">
+        <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8 font-sans space-y-8 animate-fade-in pb-24">
 
-            {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-200">
-                            <Shield className="w-5 h-5 text-white" />
-                        </div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight font-display">System <span className="text-primary-600">Administration</span></h1>
+            {/* Header Area */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div className="flex items-center gap-5">
+                    <div className="w-16 h-16 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center justify-center">
+                        <UserCog className="w-8 h-8 text-indigo-600" />
                     </div>
-                    <p className="text-slate-500 font-medium">Global governance for staff accounts, security tiers, and system access.</p>
+                    <div>
+                        <h1 className="text-3xl font-bold text-zinc-900 font-heading tracking-tight">System Access & Security</h1>
+                        <p className="text-sm font-medium text-zinc-500 mt-1">Manage clinic staff accounts and administrative permissions.</p>
+                    </div>
                 </div>
-
                 {message && (
-                    <div className="bg-primary-50 border border-primary-200 text-primary-700 px-6 py-4 rounded-2xl flex items-center gap-3 shadow-sm animate-fade-in">
-                        <CheckCircle className="w-5 h-5 text-primary-500" />
-                        <span className="text-sm font-bold uppercase tracking-wide">{message}</span>
+                    <div className="bg-indigo-50 text-indigo-700 px-6 py-3.5 rounded-2xl border border-indigo-100 shadow-sm text-sm font-bold tracking-wide animate-fade-in flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4" /> {message}
                     </div>
                 )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-
-                {/* Left Column: Management Forms */}
-                <div className="lg:col-span-4 space-y-8">
-                    {/* User Creation Card */}
-                    <div className="bg-white rounded-[2.5rem] border border-slate-200 p-8 shadow-xl shadow-slate-200/30 overflow-hidden relative">
-                        <div className="absolute top-0 right-0 p-6 opacity-5">
-                            <UserPlus className="w-24 h-24 text-slate-900" />
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                {/* Creation Form */}
+                <div className="bg-white p-8 rounded-3xl border border-zinc-200 shadow-xl shadow-zinc-200/50 relative overflow-hidden h-fit">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                    <h2 className="text-xs font-bold text-zinc-900 uppercase tracking-widest mb-8 border-b border-zinc-100 pb-4 flex items-center gap-3 relative z-10">
+                        <UserPlus className="w-5 h-5 text-indigo-600" /> Provision Staff Account
+                    </h2>
+                    <form onSubmit={handleCreateUser} className="space-y-6 relative z-10">
+                        <div>
+                            <label className={labelCls}>Full Name (for documents)</label>
+                            <input type="text" required value={newUser.full_name} onChange={e => setNewUser({ ...newUser, full_name: e.target.value })} className={inputCls} placeholder="e.g. Dr. Dawit Ayalew" />
                         </div>
-                        <h2 className="text-xl font-bold text-slate-900 font-display mb-8 flex items-center gap-3">
-                            Provision Staff
-                        </h2>
-                        <form onSubmit={handleCreateUser} className="space-y-6">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">Username / Identifier</label>
-                                    <input
-                                        type="text" required value={newUser.username}
-                                        onChange={e => setNewUser({ ...newUser, username: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-5 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all font-medium text-slate-900"
-                                        placeholder="e.g. dr.jdoe"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">Security Credential</label>
-                                    <input
-                                        type="password" required minLength="6" value={newUser.password}
-                                        onChange={e => setNewUser({ ...newUser, password: e.target.value })}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-5 focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all font-medium text-slate-900"
-                                        placeholder="Min. 6 characters"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">Account Tier</label>
-                                    <div className="relative">
-                                        <select
-                                            value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 px-5 appearance-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 focus:bg-white transition-all font-bold text-slate-900 cursor-pointer"
-                                        >
-                                            <option value="Receptionist">Receptionist Level</option>
-                                            <option value="Admin">Administrator Level</option>
-                                        </select>
-                                        <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none opacity-30 font-black text-xs">▼</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <button className="w-full h-14 bg-slate-900 text-white rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-primary-600 hover:shadow-2xl hover:shadow-primary-100 transition-all active:scale-95 shadow-xl shadow-slate-900/10">
-                                Deploy Account
+                        <div>
+                            <label className={labelCls}>Login Username</label>
+                            <input type="text" required value={newUser.username} onChange={e => setNewUser({ ...newUser, username: e.target.value })} className={inputCls} placeholder="e.g. dawit123" />
+                        </div>
+                        <div>
+                            <label className={labelCls}>Initial Password</label>
+                            <input type="password" required minLength="6" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} className={inputCls} placeholder="Min. 6 characters" />
+                        </div>
+                        <div>
+                            <label className={labelCls}>Access Level</label>
+                            <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })} className={`${inputCls} cursor-pointer appearance-none bg-no-repeat bg-[right_1rem_center] bg-[length:1.2em_1.2em]`} style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")` }}>
+                                <option value="Receptionist">Receptionist (Standard)</option>
+                                <option value="Admin">Administrator (Elevated)</option>
+                            </select>
+                        </div>
+                        <div className="pt-2">
+                            <button className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all text-sm focus-ring flex items-center justify-center gap-2 group">
+                                <UserPlus className="w-4 h-4 group-hover:scale-110 transition-transform" /> Generate Account
                             </button>
-                        </form>
-                    </div>
-
-                    {/* Reset Password Card */}
-                    {resetData.userId && (
-                        <div className="bg-amber-50 rounded-[2.5rem] border-2 border-amber-200 p-8 shadow-2xl shadow-amber-200/20 animate-fade-in">
-                            <h3 className="text-lg font-bold text-amber-900 font-display mb-6 flex items-center gap-3">
-                                <KeyRound className="w-5 h-5" /> Override Credentials
-                            </h3>
-                            <form onSubmit={handleResetPassword} className="space-y-6">
-                                <div>
-                                    <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-2 ml-1">Forced New Password</label>
-                                    <input
-                                        type="password" required minLength="6" value={resetData.newPassword}
-                                        onChange={e => setResetData({ ...resetData, newPassword: e.target.value })}
-                                        className="w-full border-2 border-amber-200 bg-white rounded-2xl py-3.5 px-5 focus:ring-4 focus:ring-amber-500/10 focus:border-amber-500 transition-all font-bold text-slate-900"
-                                    />
-                                </div>
-                                <div className="flex gap-3">
-                                    <button type="submit" className="flex-1 h-12 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all">
-                                        SUBMIT RESET
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setResetData({ userId: null, newPassword: '' })}
-                                        className="h-12 px-6 bg-white border border-amber-200 text-amber-700 rounded-xl font-bold text-xs hover:bg-amber-100 transition-all"
-                                    >
-                                        EXIT
-                                    </button>
-                                </div>
-                            </form>
                         </div>
-                    )}
+                    </form>
                 </div>
 
-                {/* Right Column: User Directory */}
-                <div className="lg:col-span-8 bg-white rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/30 overflow-hidden">
-                    <div className="p-8 sm:p-10 border-b border-slate-100 flex items-center justify-between">
-                        <div>
-                            <h2 className="text-xl font-bold text-slate-900 font-display uppercase tracking-tight">Active Identity Directory</h2>
-                            <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Global Account Management Interface</p>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100">
-                            <Search className="w-5 h-5 text-slate-300" />
-                        </div>
+                {/* User List */}
+                <div className="xl:col-span-2 bg-white rounded-3xl border border-zinc-200 shadow-xl shadow-zinc-200/50 overflow-hidden flex flex-col">
+                    <div className="p-8 border-b border-zinc-100 flex items-center gap-3 bg-zinc-50/50">
+                        <Shield className="w-5 h-5 text-indigo-600" />
+                        <h2 className="text-xs font-bold text-zinc-900 uppercase tracking-widest">Active Security Directory</h2>
                     </div>
 
-                    <div className="overflow-x-auto customized-scrollbar">
-                        <table className="w-full text-left">
-                            <thead className="bg-slate-50/50">
-                                <tr>
-                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Member Identity</th>
-                                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Security Tier</th>
-                                    <th className="px-6 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Network Status</th>
-                                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Goverance</th>
+                    <div className="overflow-x-auto flex-1">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-zinc-50 border-b border-zinc-200">
+                                    <th className="px-8 py-5 text-[11px] font-bold text-zinc-500 uppercase tracking-widest">User Profile</th>
+                                    <th className="px-8 py-5 text-[11px] font-bold text-zinc-500 uppercase tracking-widest">Access Role</th>
+                                    <th className="px-8 py-5 text-[11px] font-bold text-zinc-500 uppercase tracking-widest text-center">System Status</th>
+                                    <th className="px-8 py-5 text-[11px] font-bold text-zinc-500 uppercase tracking-widest text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-zinc-100 bg-white">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan="4" className="text-center py-24">
+                                        <td colSpan="4" className="text-center py-20">
                                             <div className="flex flex-col items-center">
-                                                <div className="w-10 h-10 border-4 border-slate-100 border-t-slate-300 rounded-full animate-spin mb-4"></div>
-                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Querying LDAP Directory...</span>
+                                                <div className="w-10 h-10 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+                                                <span className="text-zinc-400 text-sm font-bold tracking-wide">Loading Directory...</span>
                                             </div>
                                         </td>
                                     </tr>
                                 ) : users.map((u) => (
-                                    <tr key={u.id} className="group hover:bg-slate-50/80 transition-all duration-200">
-                                        <td className="px-8 py-6">
+                                    <tr key={u.id} className="hover:bg-zinc-50/80 transition-colors group">
+                                        <td className="px-8 py-5 align-middle">
                                             <div className="flex items-center gap-4">
-                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-inner ${u.id === user.id ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                                    {u.username.charAt(0).toUpperCase()}
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-extrabold text-lg shadow-sm border ${u.id === user.id ? 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white border-indigo-400 shadow-indigo-500/20' : 'bg-white text-zinc-600 border-zinc-200'}`}>
+                                                    {(u.full_name || u.username).charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-slate-900 text-sm">{u.username}</span>
-                                                        {u.id === user.id && <span className="text-[8px] bg-primary-100 text-primary-700 px-2 py-0.5 rounded-lg font-black tracking-widest uppercase">Authoritative</span>}
-                                                    </div>
-                                                    <div className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-widest">Member UID: {u.id.toString().padStart(4, '0')}</div>
+                                                    <div className="text-sm font-bold text-zinc-900 tracking-wide">{u.full_name || u.username}</div>
+                                                    <div className="text-[10px] text-zinc-400 font-mono font-medium mt-0.5 uppercase">@{u.username}</div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-6 text-center">
-                                            <div className="relative inline-block w-40">
-                                                <select
-                                                    value={u.role}
-                                                    onChange={(e) => handleRoleChange(u, e.target.value)}
-                                                    disabled={u.id === user.id}
-                                                    className={`w-full text-[10px] font-black uppercase tracking-widest rounded-xl border border-slate-200 py-2.5 pl-3 pr-8 appearance-none focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${u.role === 'Admin' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-white text-slate-600'}`}
-                                                >
-                                                    <option value="Receptionist">Receptionist</option>
-                                                    <option value="Admin">Administrator</option>
-                                                </select>
-                                                <ShieldCheck className={`absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 ${u.role === 'Admin' ? 'text-indigo-500' : 'text-slate-300'}`} />
-                                            </div>
+                                        <td className="px-8 py-5 align-middle">
+                                            <select value={u.role} onChange={(e) => handleRoleChange(u, e.target.value)} disabled={u.id === user.id}
+                                                className="text-[11px] font-bold border border-zinc-200 rounded-lg py-2 px-3 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider text-zinc-700 cursor-pointer shadow-sm hover:border-zinc-300 transition-colors appearance-none pr-8 bg-no-repeat bg-[right_0.5rem_center] bg-[length:1em_1em]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%233f3f46' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")` }}>
+                                                <option value="Receptionist">Receptionist</option>
+                                                <option value="Admin">Administrator</option>
+                                            </select>
                                         </td>
-                                        <td className="px-6 py-6 text-center">
-                                            <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${u.is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                                                <div className={`w-1.5 h-1.5 rounded-full ${u.is_active ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`}></div>
-                                                {u.is_active ? 'Authenticated' : 'Suspended'}
+                                        <td className="px-8 py-5 align-middle text-center">
+                                            <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-sm ${u.is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                                <div className={`w-2 h-2 rounded-full ${u.is_active ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-red-500'}`}></div>
+                                                {u.is_active ? 'Active' : 'Revoked'}
                                             </span>
                                         </td>
-                                        <td className="px-8 py-6 text-right">
+                                        <td className="px-8 py-5 align-middle text-right">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() => setResetData({ userId: u.id, newPassword: '' })}
-                                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-amber-500 hover:bg-amber-50 hover:border-amber-300 transition-all shadow-sm group-hover:shadow-md"
-                                                    title="Override Credentials"
-                                                >
+                                                <button onClick={() => setResetData({ userId: u.id, newPassword: '' })} title="Reset Password"
+                                                    className="w-10 h-10 flex items-center justify-center rounded-xl text-amber-600 bg-white border border-zinc-200 hover:bg-amber-50 hover:border-amber-200 transition-all shadow-sm focus-ring">
                                                     <KeyRound className="w-4 h-4" />
                                                 </button>
-                                                <button
-                                                    onClick={() => handleToggleStatus(u)}
-                                                    disabled={u.id === user.id}
-                                                    className={`w-10 h-10 flex items-center justify-center rounded-xl border transition-all shadow-sm group-hover:shadow-md disabled:opacity-30 disabled:hover:bg-transparent ${u.is_active ? 'bg-white border-slate-200 text-red-500 hover:bg-red-50 hover:border-red-300' : 'bg-white border-slate-200 text-green-500 hover:bg-green-50 hover:border-green-300'}`}
-                                                    title={u.is_active ? 'Suspend Credentials' : 'Restore Access'}
-                                                >
+                                                <button onClick={() => handleToggleStatus(u)} disabled={u.id === user.id} title={u.is_active ? "Revoke Access" : "Restore Access"}
+                                                    className={`w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-zinc-200 shadow-sm focus-ring transition-all disabled:opacity-30 disabled:cursor-not-allowed ${u.is_active ? 'text-red-500 hover:bg-red-50 hover:border-red-200' : 'text-emerald-500 hover:bg-emerald-50 hover:border-emerald-200'}`}>
                                                     {u.is_active ? <Ban className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                                                 </button>
                                             </div>
@@ -292,8 +188,28 @@ const UserManagement = () => {
                         </table>
                     </div>
                 </div>
-
             </div>
+
+            {/* Reset Modal - Glassmorphism */}
+            {resetData.userId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-zinc-950/60 backdrop-blur-md animate-fade-in" onClick={() => setResetData({ userId: null, newPassword: '' })}></div>
+                    <div className="bg-white p-8 rounded-[2rem] shadow-2xl w-full max-w-sm animate-scale-in border border-zinc-200 relative z-10">
+                        <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-amber-100">
+                            <KeyRound className="w-7 h-7 text-amber-500" />
+                        </div>
+                        <h3 className="text-xl font-bold text-zinc-900 mb-2 text-center font-heading">Reset Password</h3>
+                        <p className="text-xs font-semibold text-zinc-500 mb-8 text-center uppercase tracking-widest">Enforce complex passwords</p>
+                        <form onSubmit={handleResetPassword}>
+                            <input type="password" required minLength="6" value={resetData.newPassword} onChange={e => setResetData({ ...resetData, newPassword: e.target.value })} className={`${inputCls} mb-6`} placeholder="Enter new password..." />
+                            <div className="flex flex-col gap-3">
+                                <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all text-sm focus-ring">Confirm Reset</button>
+                                <button type="button" onClick={() => setResetData({ userId: null, newPassword: '' })} className="w-full bg-white text-zinc-600 border border-zinc-200 font-bold py-4 rounded-2xl hover:bg-zinc-50 transition-all text-sm focus-ring shadow-sm">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -1,12 +1,21 @@
+import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-# Using SQLite for simplicity. pool_pre_ping=True acts as self-healing for DB connection drops.
-SQLALCHEMY_DATABASE_URL = "sqlite:///./dental_management.db"
+load_dotenv()
+
+# Check for a production URL, fallback to local SQLite
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dental_management.db")
+
+# SQLite needs thread checks disabled, Postgres doesn't
+connect_args = {}
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False, "timeout": 15}
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
-    connect_args={"check_same_thread": False}, 
+    connect_args=connect_args, 
     pool_pre_ping=True
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

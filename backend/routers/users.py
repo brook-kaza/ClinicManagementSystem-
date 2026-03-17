@@ -64,9 +64,12 @@ def update_user_role(
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
         
-    # Prevent admin from deactivating themselves
-    if db_user.id == current_user.id and user_update.is_active is False:
-        raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+    # Prevent admin from deactivating themselves or changing their own role
+    if db_user.id == current_user.id:
+        if user_update.is_active is False:
+            raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
+        if user_update.role is not None and user_update.role != current_user.role:
+            raise HTTPException(status_code=400, detail="Cannot change your own access role")
         
     return crud.update_user_details(db=db, user=db_user, user_update=user_update)
 

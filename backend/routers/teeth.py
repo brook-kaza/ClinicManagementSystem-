@@ -5,21 +5,19 @@ import crud
 import schemas
 import models
 from database import get_db
-from auth import get_current_active_user, RoleChecker
+from auth import get_current_active_user
 
 router = APIRouter(
     prefix="/patients/{patient_id}/teeth",
     tags=["teeth"]
 )
 
-admin_only = RoleChecker(["Admin"])
-
 @router.post("", response_model=schemas.ToothStatusRead, status_code=201)
 def create_tooth_status_for_patient(
     patient_id: int, 
     tooth_status: schemas.ToothStatusCreate, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(admin_only)
+    current_user: models.User = Depends(get_current_active_user)
 ):
     # Verify patient exists
     db_patient = crud.get_patient(db, patient_id=patient_id)
@@ -34,7 +32,7 @@ def create_tooth_status_for_patient(
 def read_tooth_statuses(
     patient_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(admin_only)
+    current_user: models.User = Depends(get_current_active_user)
 ):
     # Verify patient exists
     db_patient = crud.get_patient(db, patient_id=patient_id)
@@ -47,7 +45,7 @@ def read_tooth_statuses(
 def cleanup_duplicate_teeth(
     patient_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(admin_only)
+    current_user: models.User = Depends(get_current_active_user)
 ):
     """Remove duplicate tooth entries, keeping only the latest per tooth_number."""
     all_teeth = db.query(models.ToothStatus).filter(

@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn daemon for FastAPI Application (Curson Clinic)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/clinic-management-system/backend
+ExecStart=/var/www/clinic-management-system/backend/venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 127.0.0.1:8000
+EnvironmentFile=/var/www/clinic-management-system/backend/.env
+
+[Install]
+WantedBy=multi-user.target

@@ -1,14 +1,16 @@
 # Trigger reload for bcrypt manual fix
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, APIRouter, HTTPException, Depends
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import IntegrityError, OperationalError
 from contextlib import asynccontextmanager
 import logging
+import os
 from datetime import datetime
 
 from database import engine, Base, SessionLocal
-from routers import patients, teeth, visits, auth, users, documents
+from routers import patients, teeth, visits, auth, users, documents, dashboard, reports, billing
 import crud
 import schemas
 from auth import get_password_hash
@@ -22,21 +24,19 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("Initializing database tables...")
     try:
-        # Create tables on startup if they don't exist
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified/created successfully.")
         
-        # Create default admin user
+        # One-time migration: set admin full_name
         db = SessionLocal()
-        admin_user = crud.get_user_by_username(db, username="admin")
-        if not admin_user:
-            crud.create_user(
-                db, 
-                schemas.UserCreate(username="admin", password="password123", role="Admin", is_active=True), 
-                get_password_hash("password123")
-            )
-            logger.info("Default admin user created (admin / password123)")
-        db.close()
+        try:
+            admin = db.query(crud.models.User).filter(crud.models.User.id == 1).first()
+            if admin and not admin.full_name:
+                admin.full_name = "Dawit Ayalew"
+                db.commit()
+                logger.info("Set admin full_name to 'Dawit Ayalew'")
+        finally:
+            db.close()
     except Exception as e:
         logger.error(f"Failed to initialize database: {e}")
     yield
@@ -44,15 +44,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Dental Management System API", lifespan=lifespan)
 
-# CORS Configuration for React Frontend
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-]
+# Configure CORS for Frontend
+# Read ALLOWED_ORIGINS from environment, splitting by comma.
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
+if allowed_origins_env:
+    origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+else:
+    # Fallback for local development if env var is missing
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -62,13 +66,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/health")
-def health_check():
-    return {
-        "status": "healthy", 
-        "timestamp": datetime.utcnow().isoformat(),
-        "pdf_available": documents.XHTML2PDF_AVAILABLE
-    }
+# Enforce HTTPS and add secure headers in production
+if os.getenv("ENVIRONMENT") == "production":
+    from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+    app.add_middleware(HTTPSRedirectMiddleware)
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    if os.getenv("ENVIRONMENT") == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
 
 # --- Global Exception Handlers for Database Integrity ---
 
@@ -83,30 +94,43 @@ async def sqlalchemy_integrity_error_handler(request: Request, exc: IntegrityErr
 @app.exception_handler(OperationalError)
 async def sqlalchemy_operational_error_handler(request: Request, exc: OperationalError):
     logger.error(f"Operational/Connection Error: {exc}")
-    # Self-healing handling: returning a 503 instead of crashing the process
     return JSONResponse(
         status_code=503,
         content={"message": "Database timeout or connection blip. Please try again later."},
     )
 
-from fastapi.staticfiles import StaticFiles
-import os
+# --- Build the /api/v1 Router ---
+api_router = APIRouter(prefix="/api/v1")
 
-# --- Include Routers ---
-app.include_router(auth.router)
-app.include_router(users.router)
-app.include_router(patients.router)
-app.include_router(teeth.router)
-app.include_router(visits.router)
-app.include_router(documents.router)
+@api_router.get("/health")
+def health_check():
+    return {
+        "status": "healthy", 
+        "timestamp": crud.models.get_local_time_eat().isoformat(),
+        "pdf_available": documents.XHTML2PDF_AVAILABLE
+    }
 
-from fastapi.responses import FileResponse
+api_router.include_router(auth.router)
+api_router.include_router(users.router)
+api_router.include_router(patients.router)
+api_router.include_router(teeth.router)
+api_router.include_router(visits.router)
+api_router.include_router(documents.router)
+api_router.include_router(dashboard.router)
+api_router.include_router(reports.router)
+api_router.include_router(billing.router)
 
-# --- Mount uploads directory for X-Rays ---
-uploads_path = os.path.join(os.path.dirname(__file__), "uploads")
-if not os.path.exists(uploads_path):
-    os.makedirs(uploads_path)
-app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
+# --- Authenticated File Serving for X-Rays ---
+@api_router.get("/uploads/{filename}")
+async def get_uploaded_file(filename: str, current_user: crud.models.User = Depends(auth.get_current_active_user)):
+    """Authenticated endpoint to serve X-ray images via API prefix."""
+    file_path = os.path.join(os.path.dirname(__file__), "uploads", filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(file_path)
+
+app.include_router(api_router)
+
 
 # --- Serve Frontend Static Files ---
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
@@ -120,7 +144,11 @@ if os.path.exists(frontend_path):
     # --- Catch-all to serve index.html for Frontend routing ---
     @app.get("/{full_path:path}")
     async def serve_react_app(full_path: str):
-        # If it looks like a file (has an extension), try to look in dist
+        # Never intercept API routes — let FastAPI return its own 404
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="API Route Not Found")
+
+        # If it looks like a file that exists in dist, serve it
         file_path = os.path.join(frontend_path, full_path)
         if os.path.exists(file_path) and os.path.isfile(file_path):
             return FileResponse(file_path)

@@ -1,106 +1,165 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Users, Search, Activity, Clock, LogOut, Shield, LayoutDashboard } from 'lucide-react';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Users, Search, Activity, Clock, LogOut, Shield, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
+import ErrorBoundary from './components/ErrorBoundary';
 
+import Dashboard from './pages/Dashboard';
 import Registration from './pages/Registration';
 import SearchQueue from './pages/SearchQueue';
 import ClinicalHub from './pages/ClinicalHub';
 import PatientHistory from './pages/PatientHistory';
 import UserManagement from './pages/UserManagement';
+import Reports from './pages/Reports';
+import AccessDenied from './components/AccessDenied';
+import { LayoutDashboard } from 'lucide-react';
 
-const SidebarLink = ({ to, icon: Icon, children }) => {
+const SidebarLink = ({ to, icon: Icon, children, isCollapsed, state = {}, className = '' }) => {
   const location = useLocation();
   const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
 
   return (
     <Link
       to={to}
-      className={`flex items-center px-4 py-3 mx-2 rounded-xl text-sm font-semibold transition-all duration-200 group ${isActive
-        ? 'bg-primary-600 text-white shadow-lg shadow-primary-200'
-        : 'text-slate-600 hover:bg-slate-50 hover:text-primary-600'
-        }`}
+      state={state}
+      className={`group flex items-center gap-3 px-3 py-2.5 mx-3 rounded-xl text-sm font-medium transition-all duration-200 focus-ring ${isActive
+        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+        : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80'
+        } ${className}`}
     >
-      <Icon className={`w-5 h-5 mr-3 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-primary-500'}`} />
-      {children}
+      <Icon className={`w-[18px] h-[18px] transition-transform duration-200 group-hover:scale-110 ${isActive ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
+      {!isCollapsed && <span className="animate-fade-in">{children}</span>}
     </Link>
   );
 };
 
 const Layout = ({ children }) => {
-  const location = useLocation();
   const { logout, user } = useAuth();
+  const location = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const pathParts = location.pathname.split('/').filter(p => p);
   const activePatientId = (pathParts[0] === 'hub' || pathParts[0] === 'history') ? pathParts[1] : null;
+  const navigate = useNavigate();
+
+  // Global Keyboard Shortcuts (Cmd+K / Ctrl+K for Search)
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        navigate('/search');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [navigate]);
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+    <div className="flex h-screen overflow-hidden bg-zinc-100 font-sans">
       {/* Sidebar */}
-      <aside className="w-72 bg-white border-r border-slate-200 flex flex-col z-20 transition-all duration-300">
-        <div className="h-20 flex items-center px-8 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary-600 to-primary-400 flex items-center justify-center shadow-lg shadow-primary-100">
-              <Activity className="w-6 h-6 text-white" />
+      <aside
+        className={`relative flex flex-col border-r border-zinc-800 bg-zinc-950 transition-all duration-300 z-50 ${isCollapsed ? 'w-20' : 'w-[260px]'}`}
+      >
+        {/* Logo Area */}
+        <div className="h-[72px] flex items-center justify-between px-4 border-b border-zinc-900">
+          <div className={`flex items-center gap-3 overflow-hidden ${isCollapsed ? 'justify-center w-full' : ''}`}>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 shrink-0">
+              <Activity className="w-5 h-5 text-white" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-bold text-slate-900 tracking-tight font-display leading-tight">Hani Dental <span className="text-primary-600">Pro</span></span>
-              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-400">Management System</span>
-            </div>
+            {!isCollapsed && (
+              <div className="flex flex-col animate-fade-in whitespace-nowrap">
+                <span className="text-base font-bold text-white tracking-tight leading-tight font-heading">Hani Dental</span>
+                <span className="text-[11px] font-bold text-indigo-400 tracking-wider uppercase">Pro</span>
+              </div>
+            )}
           </div>
+
+          {/* Collapse Toggle */}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className={`absolute -right-3 top-8 z-[60] p-1.5 rounded-lg bg-zinc-900 border border-zinc-700 shadow-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all duration-300 hidden sm:flex items-center justify-center`}
+            style={{ transform: 'translateX(0)' }}
+            aria-label="Toggle Sidebar"
+          >
+            {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+          </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-6 space-y-1 customized-scrollbar">
-          <div className="px-6 mb-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">Main Menu</span>
+        {/* Navigation */}
+        <nav className="flex-1 py-6 space-y-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
+          <div className={`px-5 mb-2 ${isCollapsed ? 'text-center' : ''}`}>
+            <span className={`text-[10px] font-bold text-zinc-600 uppercase tracking-widest ${isCollapsed ? 'hidden' : 'inline-block'}`}>Main Menu</span>
+            {isCollapsed && <div className="h-px w-6 mx-auto bg-zinc-800 mt-2"></div>}
           </div>
-          <SidebarLink to="/" icon={Users}>Registration</SidebarLink>
-          <SidebarLink to="/search" icon={Search}>Search & Queue</SidebarLink>
+          <SidebarLink to="/" icon={LayoutDashboard} isCollapsed={isCollapsed}>Dashboard</SidebarLink>
+          <SidebarLink to="/search" icon={Search} isCollapsed={isCollapsed}>Clinical Queue <span className="ml-auto text-[9px] font-bold text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded border border-zinc-700 font-mono tracking-widest">⌘K</span></SidebarLink>
+          <SidebarLink to="/register" icon={Users} isCollapsed={isCollapsed}>Patient Reg</SidebarLink>
 
-          <div className="mt-8 px-6 mb-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">Patient Records</span>
+          <div className={`mt-8 px-5 mb-2 ${isCollapsed ? 'text-center' : ''}`}>
+            <span className={`text-[10px] font-bold text-zinc-600 uppercase tracking-widest ${isCollapsed ? 'hidden' : 'inline-block'}`}>Clinical Record</span>
+            {isCollapsed && <div className="h-px w-6 mx-auto bg-zinc-800 mt-2"></div>}
           </div>
-
-          <SidebarLink to={activePatientId ? `/hub/${activePatientId}` : '/hub'} icon={Activity}>Clinical Hub</SidebarLink>
-          <SidebarLink to={activePatientId ? `/history/${activePatientId}` : '/history'} icon={Clock}>Visit History</SidebarLink>
+          <SidebarLink to={activePatientId ? `/hub/${activePatientId}` : '/hub'}
+            icon={Activity}
+            isCollapsed={isCollapsed}
+            className={user?.role === 'Receptionist' ? 'hidden' : ''}
+          >
+            Clinical Hub
+          </SidebarLink>
+          <SidebarLink 
+            to={activePatientId ? `/history/${activePatientId}` : '/history'}
+            icon={Clock}
+            isCollapsed={isCollapsed}
+            className={user?.role === 'Receptionist' ? 'hidden' : ''}
+          >
+            Visit History
+          </SidebarLink>
 
           {user?.role === 'Admin' && (
             <>
-              <div className="mt-8 px-6 mb-2">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">Administration</span>
+              <div className={`mt-8 px-5 mb-2 ${isCollapsed ? 'text-center' : ''}`}>
+                <span className={`text-[10px] font-bold text-zinc-600 uppercase tracking-widest ${isCollapsed ? 'hidden' : 'inline-block'}`}>Admin</span>
+                {isCollapsed && <div className="h-px w-6 mx-auto bg-zinc-800 mt-2"></div>}
               </div>
-              <SidebarLink to="/users" icon={Shield}>System Admin</SidebarLink>
+              <SidebarLink to="/reports" icon={FileText} isCollapsed={isCollapsed}>Reports & Analytics</SidebarLink>
+              <SidebarLink to="/users" icon={Shield} isCollapsed={isCollapsed}>System Users</SidebarLink>
             </>
           )}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-          <div className="flex items-center justify-between p-2 rounded-2xl bg-white border border-slate-100 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-sm uppercase shadow-inner">
-                {user?.username?.charAt(0) || 'U'}
+        {/* User Profile Footer */}
+        <div className="p-3 border-t border-zinc-800/50 bg-zinc-950/50">
+          <div className={`flex items-center ${isCollapsed ? 'justify-center flex-col gap-2' : 'justify-between'} p-2.5 rounded-xl hover:bg-zinc-900 transition-colors group cursor-default`}>
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-9 h-9 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-sm shrink-0 shadow-inner">
+                {user?.username?.charAt(0).toUpperCase()}
               </div>
-              <div className="flex flex-col">
-                <span className="text-sm font-bold text-slate-900 leading-none mb-1">{user?.username || 'User'}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase">{user?.role || 'Staff'}</span>
-              </div>
+              {!isCollapsed && (
+                <div className="flex flex-col overflow-hidden animate-fade-in">
+                  <span className="text-sm font-semibold text-zinc-200 truncate">{user?.username}</span>
+                  <span className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">{user?.role}</span>
+                </div>
+              )}
             </div>
             <button
               onClick={logout}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-all"
-              title="Log out"
+              className={`p-2 text-zinc-500 hover:text-red-400 transition-all duration-200 rounded-lg hover:bg-red-500/10 focus-ring ${isCollapsed ? 'mt-1 w-full flex justify-center' : 'opacity-0 group-hover:opacity-100'}`}
+              title="Logout"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-4 h-4 hover:scale-110 transition-transform" />
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto relative z-0">
-        <div className="animate-fade-in min-h-full">
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto relative scroll-smooth">
+        {/* Subtle top gradient for depth */}
+        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-zinc-200/50 to-transparent pointer-events-none -z-10"></div>
+        <div className="animate-scale-in h-full">
           {children}
         </div>
       </main>
@@ -109,16 +168,22 @@ const Layout = ({ children }) => {
 };
 
 const AuthenticatedApp = () => {
-  const { token, loading } = useAuth();
+  const { token, loading, user } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-        <div className="relative">
-          <div className="w-16 h-16 border-4 border-primary-100 rounded-full"></div>
-          <div className="absolute top-0 left-0 w-16 h-16 border-4 border-primary-600 rounded-full border-t-transparent animate-spin"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 font-sans">
+        <div className="relative flex flex-col items-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-indigo-500/40 animate-pulse">
+            <Activity className="w-8 h-8 text-white" />
+          </div>
+          <div className="mt-8 flex items-center gap-2">
+            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-[bounce_1s_infinite_0ms]"></div>
+            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-[bounce_1s_infinite_200ms]"></div>
+            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-[bounce_1s_infinite_400ms]"></div>
+          </div>
+          <span className="mt-4 text-zinc-400 font-medium text-sm tracking-wide">Initializing workspace...</span>
         </div>
-        <span className="mt-4 text-slate-500 font-medium animate-pulse">Initializing Hani Dental Pro...</span>
       </div>
     );
   }
@@ -129,17 +194,24 @@ const AuthenticatedApp = () => {
 
   return (
     <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Registration />} />
-          <Route path="/search" element={<SearchQueue />} />
-          <Route path="/hub/:patientId" element={<ClinicalHub />} />
-          <Route path="/hub" element={<ClinicalHub />} />
-          <Route path="/history/:patientId" element={<PatientHistory />} />
-          <Route path="/history" element={<PatientHistory />} />
-          <Route path="/users" element={<UserManagement />} />
-        </Routes>
-      </Layout>
+      <ErrorBoundary>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/register" element={<Registration />} />
+            <Route path="/search" element={<SearchQueue />} />
+
+            {/* Clinical Routes - Protected from Receptionists */}
+            <Route path="/hub/:patientId" element={user?.role === 'Receptionist' ? <AccessDenied /> : <ClinicalHub />} />
+            <Route path="/hub" element={user?.role === 'Receptionist' ? <AccessDenied /> : <ClinicalHub />} />
+            <Route path="/history/:patientId" element={user?.role === 'Receptionist' ? <AccessDenied /> : <PatientHistory />} />
+            <Route path="/history" element={user?.role === 'Receptionist' ? <AccessDenied /> : <PatientHistory />} />
+
+            <Route path="/reports" element={['Admin', 'Dentist'].includes(user?.role) ? <Reports /> : <AccessDenied />} />
+            <Route path="/users" element={user?.role === 'Admin' ? <UserManagement /> : <AccessDenied />} />
+          </Routes>
+        </Layout>
+      </ErrorBoundary>
     </Router>
   );
 };
@@ -147,6 +219,7 @@ const AuthenticatedApp = () => {
 function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-right" toastOptions={{ className: 'font-sans text-sm font-semibold rounded-2xl shadow-xl border border-zinc-100' }} />
       <AuthenticatedApp />
     </AuthProvider>
   );

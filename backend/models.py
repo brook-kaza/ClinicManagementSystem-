@@ -1,14 +1,20 @@
 from typing import List, Optional
 from sqlalchemy import String, ForeignKey, DateTime, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from database import Base
+
+EAT_TZ = timezone(timedelta(hours=3))
+
+def get_local_time_eat():
+    return datetime.now(EAT_TZ).replace(tzinfo=None)
 
 class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    full_name: Mapped[Optional[str]] = mapped_column(String(150), default=None)
     hashed_password: Mapped[str] = mapped_column(String(200))
     role: Mapped[str] = mapped_column(String(50), default="Receptionist") # Admin, Dentist, Receptionist
     is_active: Mapped[bool] = mapped_column(default=True)
@@ -24,7 +30,12 @@ class Patient(Base):
     sex: Mapped[Optional[str]] = mapped_column(String(10))
     address: Mapped[Optional[str]] = mapped_column(String(250))
     medical_alerts: Mapped[Optional[str]] = mapped_column(String(500))
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
+    
+    # Global Consent
+    consent_given: Mapped[bool] = mapped_column(default=False)
+    consent_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    consent_by: Mapped[Optional[str]] = mapped_column(String(150))
 
     teeth: Mapped[List["ToothStatus"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan"
@@ -39,6 +50,9 @@ class Patient(Base):
         back_populates="patient", cascade="all, delete-orphan"
     )
     referrals: Mapped[List["Referral"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
+    invoices: Mapped[List["Invoice"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan"
     )
 
@@ -57,9 +71,10 @@ class Visit(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
-    visit_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    visit_date: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
     chief_complaint: Mapped[Optional[str]] = mapped_column(String(500))
     doctors_notes: Mapped[Optional[str]] = mapped_column(Text)
+    primary_diagnosis: Mapped[Optional[str]] = mapped_column(String(100))
     
     # Vital Signs
     blood_pressure: Mapped[Optional[str]] = mapped_column(String(20))
@@ -69,6 +84,10 @@ class Visit(Base):
     
     # X-Ray
     xray_url: Mapped[Optional[str]] = mapped_column(String(500))
+    
+    # Per-Visit Consent
+    visit_consent: Mapped[bool] = mapped_column(default=False)
+    visit_consent_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     patient: Mapped["Patient"] = relationship(back_populates="visits")
 
@@ -78,7 +97,7 @@ class Prescription(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
     visit_id: Mapped[Optional[int]] = mapped_column(ForeignKey("visits.id"))
-    date_issued: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    date_issued: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
     medications: Mapped[str] = mapped_column(Text)  # JSON string of medications
     instructions: Mapped[Optional[str]] = mapped_column(Text)
     
@@ -90,7 +109,7 @@ class SickLeave(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
     visit_id: Mapped[Optional[int]] = mapped_column(ForeignKey("visits.id"))
-    date_issued: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    date_issued: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
     start_date: Mapped[datetime] = mapped_column(DateTime)
     end_date: Mapped[datetime] = mapped_column(DateTime)
     diagnosis: Mapped[str] = mapped_column(String(500))
@@ -104,9 +123,34 @@ class Referral(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
     visit_id: Mapped[Optional[int]] = mapped_column(ForeignKey("visits.id"))
-    date_issued: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    date_issued: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
     referred_to: Mapped[str] = mapped_column(String(200)) # Clinic or Doctor name
     reason: Mapped[str] = mapped_column(Text)
     clinical_summary: Mapped[Optional[str]] = mapped_column(Text)
 
     patient: Mapped["Patient"] = relationship(back_populates="referrals")
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
+    description: Mapped[str] = mapped_column(String(255))
+    total_amount: Mapped[float] = mapped_column()
+    status: Mapped[str] = mapped_column(String(20), default="Unpaid") # Unpaid, Partially Paid, Paid
+    
+    patient: Mapped["Patient"] = relationship("Patient", back_populates="invoices")
+    payments: Mapped[List["Payment"]] = relationship("Payment", back_populates="invoice", cascade="all, delete-orphan")
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"))
+    amount_paid: Mapped[float] = mapped_column()
+    payment_date: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
+    payment_method: Mapped[str] = mapped_column(String(50)) # Cash, Card, Transfer
+    recorded_by: Mapped[Optional[str]] = mapped_column(String(50))
+
+    invoice: Mapped["Invoice"] = relationship("Invoice", back_populates="payments")

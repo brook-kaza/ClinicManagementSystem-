@@ -1,36 +1,58 @@
+/* Modern Professional Font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700&display=swap');
+
+/* Base Tailwind Imports */
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&display=swap');
 
-@theme {
-  --color-primary-50: #f0f7ff;
-  --color-primary-100: #e0f0fe;
-  --color-primary-200: #bae0fd;
-  --color-primary-300: #7cc7fb;
-  --color-primary-400: #38a9f8;
-  --color-primary-500: #0e8ce4;
-  --color-primary-600: #026dc2;
-  --color-primary-700: #03579d;
-  --color-primary-800: #074a81;
-  --color-primary-900: #0c3e6b;
-  --color-primary-950: #08274a;
-
-  --color-secondary-50: #f0fdfa;
-  --color-secondary-500: #14b8a6;
-  --color-secondary-600: #0d9488;
-
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Lexend', sans-serif;
-
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
-  --radius-3xl: 1.5rem;
-}
-
+/* ── Design Tokens ──────────────────────────────────── */
 :root {
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.3);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Outfit', var(--font-sans);
+
+  --sidebar-bg: #09090b;
+  /* Zinc 950 */
+  --sidebar-hover: #18181b;
+  /* Zinc 900 */
+  --sidebar-border: #27272a;
+  /* Zinc 800 */
+
+  --accent: #4f46e5;
+  /* Indigo 600 - Dynamic Accent */
+  --accent-hover: #4338ca;
+  /* Indigo 700 */
+  --accent-light: #e0e7ff;
+  /* Indigo 100 */
+  --accent-dark: #3730a3;
+  /* Indigo 800 */
+
+  --surface: #ffffff;
+  --surface-alt: #fafafa;
+  /* Zinc 50 */
+  --surface-hover: #f4f4f5;
+  /* Zinc 100 */
+
+  --border: #e4e4e7;
+  /* Zinc 200 */
+
+  --text-primary: #09090b;
+  /* Zinc 950 */
+  --text-secondary: #52525b;
+  /* Zinc 500 */
+  --text-muted: #a1a1aa;
+  /* Zinc 400 */
+
+  --success: #10b981;
+  --success-bg: #ecfdf5;
+  --danger: #ef4444;
+  --danger-bg: #fef2f2;
+  --warning: #f59e0b;
+  --warning-bg: #fffbeb;
+
+  /* Shadows for depth */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 }
 
 body {
@@ -38,44 +60,53 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f8fafc;
-  color: #1e293b;
+  background-color: #f4f4f5;
+  /* Zinc 100 */
+  color: var(--text-primary);
+  min-height: 100vh;
 }
 
 h1,
 h2,
 h3,
 h4,
-.font-display {
-  font-family: var(--font-display);
+h5,
+h6 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
 }
 
-.glass-card {
-  background: var(--glass-bg);
+/* ── Custom Utilities & Glassmorphism ───────────────── */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: var(--shadow-glass);
 }
 
-.premium-shadow {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+.glass-panel-dark {
+  background: rgba(9, 9, 11, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(39, 39, 42, 0.5);
 }
 
-.premium-shadow-hover {
-  transition: var(--transition-normal);
-}
-
-.premium-shadow-hover:hover {
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
-  transform: translateY(-2px);
-}
-
-/* Micro-animations */
+/* ── Animations (Premium & Smooth) ──────────────────── */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
   }
 
   to {
@@ -84,11 +115,94 @@ h4,
   }
 }
 
+@keyframes scaleInFade {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .animate-fade-in {
-  animation: fadeIn var(--transition-normal);
+  animation: fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUpFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-scale-in {
+  animation: scaleInFade 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ── Universal Scrollbar (Sleek) ────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  /* Zinc 300 */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+  /* Zinc 400 */
+}
+
+/* ── Interactive Elements Focus Ring ────────────────── */
+.focus-ring {
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+  border-color: var(--accent);
+}
+
+/* ── Custom Inputs ──────────────────────────────────── */
+.input-field {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.input-field:hover {
+  border-color: #d4d4d8;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+/* Label styling */
+.label-text {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 0.375rem;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+  font-family: 'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, monospace;
 }
