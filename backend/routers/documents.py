@@ -530,3 +530,50 @@ def get_consent_form_pdf(patient_id: int, db: Session = Depends(get_db), current
     if pdf:
         return Response(content=pdf, media_type="application/pdf")
     raise HTTPException(status_code=500, detail="PDF generation failed")
+
+@router.get("/patients/{patient_id}/orthodontic-consent/pdf")
+def get_orthodontic_consent_pdf(patient_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    """Generate professional 1-page PDF for Orthodontic Treatment Consent form for a specific patient."""
+    patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    local_issued = models.get_local_time_eat()
+    patient_block = _build_patient_block(patient, "Consent", "CONSENT", local_issued)
+
+    consent_content = f"""
+    <div style="font-size: 11pt; line-height: 1.6;">
+        <h4 style="margin: 0 0 10px 0; color: #1f2937; text-transform: uppercase;">Orthodontic Treatment Overview</h4>
+        <p style="margin: 0 0 10px 0;">I understand that orthodontic treatment involves risks and commitments. By proceeding, I acknowledge and accept the following conditions:</p>
+        
+        <ul style="margin: 0 0 15px 20px; padding: 0;">
+            <li style="margin-bottom: 5px;"><b>Oral Hygiene:</b> Excellent brushing and flossing are mandatory. Failure to maintain hygiene can lead to permanent decalcification (white spots), tooth decay, and gum disease.</li>
+            <li style="margin-bottom: 5px;"><b>Appointments & Cooperation:</b> I must attend all scheduled adjustments and wear elastics/headgear exactly as prescribed. Poor cooperation will extend treatment time and compromise results.</li>
+            <li style="margin-bottom: 5px;"><b>Biological Risks:</b> Roots may shorten (resorption), which usually does not affect tooth health but occasionally threatens longevity. Existing TMJ (jaw joint) issues may persist or flair up during or after treatment.</li>
+            <li style="margin-bottom: 5px;"><b>Estimated Duration:</b> The proposed treatment time is only an estimate. Complexities or missing appointments inevitably extend the time in active appliances.</li>
+            <li style="margin-bottom: 5px;"><b>Retention Phase:</b> Teeth have a tendency to relapse. Lifetime retainer wear is the only way to prevent teeth from shifting post-treatment.</li>
+        </ul>
+
+        <p style="margin: 15px 0;"><b>By providing my signature, I certify that I understand the recommended orthodontic treatment, the risks and limitations of treatment, and the fee structure. I have had all of my questions answered, and have not been offered any guarantees of perfectly straight teeth without my full cooperation.</b></p>
+
+        <table style="width: 100%; margin-top: 30px;">
+            <tr>
+                <td style="width: 50%;">Patient name: ________________________</td>
+                <td style="width: 50%;">Legal guardian name: ____________________</td>
+            </tr>
+            <tr>
+                <td style="width: 50%; padding-top: 20px;">Signature: __________________________</td>
+                <td style="width: 50%; padding-top: 20px;">Date: ______________________________</td>
+            </tr>
+        </table>
+    </div>
+    """
+
+    body = _build_section("ORTHODONTIC TREATMENT CONSENT", consent_content)
+
+    doctor_display = current_user.full_name or current_user.username
+    pdf = render_pdf(get_base_html("Orthodontic Consent Form", patient_block, body, local_issued, doctor_name=doctor_display))
+    if pdf:
+        return Response(content=pdf, media_type="application/pdf")
+    raise HTTPException(status_code=500, detail="PDF generation failed")
+

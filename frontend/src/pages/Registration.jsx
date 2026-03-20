@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserPlus, Activity, Phone, CreditCard, AlertCircle, ChevronRight, User, MapPin } from 'lucide-react';
+import { UserPlus, Activity, Phone, CreditCard, AlertCircle, ChevronRight, User, MapPin, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ const Registration = () => {
         age: '',
         sex: '',
         address: '',
+        tin_number: '',
         medical_alerts: '',
     });
     const [loading, setLoading] = useState(false);
@@ -27,7 +28,7 @@ const Registration = () => {
         try {
             const response = await api.post('/patients', formData);
             toast.success(`Patient ${response.data.full_name} registered successfully!`);
-            setFormData({ full_name: '', card_number: '', phone: '', age: '', sex: '', address: '', medical_alerts: '' });
+            setFormData({ full_name: '', card_number: '', phone: '', age: '', sex: '', address: '', tin_number: '', medical_alerts: '' });
             setTimeout(() => navigate(`/hub/${response.data.id}`), 1200);
         } catch (error) {
             const detail = error.response?.data?.detail;
@@ -159,6 +160,19 @@ const Registration = () => {
                                             placeholder="e.g. Bole, Addis Ababa" />
                                     </div>
                                 </div>
+
+                                {/* TIN Number */}
+                                <div>
+                                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2.5">TIN Number</label>
+                                    <div className="relative group">
+                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-400">
+                                            <FileText className="h-[18px] w-[18px]" />
+                                        </div>
+                                        <input type="text" name="tin_number" value={formData.tin_number} onChange={handleChange}
+                                            className="w-full bg-zinc-50 border border-zinc-300 hover:border-zinc-400 text-zinc-900 text-[14px] font-medium rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 focus:bg-white block p-4 pl-12 transition-all placeholder:text-zinc-500 outline-none font-mono tracking-wide"
+                                            placeholder="e.g. 0012345678" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -197,7 +211,7 @@ const Registration = () => {
 
                     {/* Action Footer */}
                     <div className="mt-14 pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-5">
-                        <button type="button" onClick={() => setFormData({ full_name: '', card_number: '', phone: '', age: '', sex: '', address: '', medical_alerts: '' })}
+                        <button type="button" onClick={() => setFormData({ full_name: '', card_number: '', phone: '', age: '', sex: '', address: '', tin_number: '', medical_alerts: '' })}
                             className="w-full sm:w-auto px-8 py-3.5 bg-white border border-slate-200 rounded-2xl text-sm font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-800 transition-colors focus-ring">
                             Reset Default
                         </button>

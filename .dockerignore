@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+.venv
+venv
+*.db
+
+# Node
+node_modules
+frontend/node_modules
+
+# IDE
+.vscode
+.idea
+
+# Backups and temp files
+backups
+*.tar.gz
+*.sql
+*.sh
+*.bat
+*.py
+
+# Docker
+.dockerignore
+docker-compose.yml
+docker-nginx.conf
+
+# Environment
+.env

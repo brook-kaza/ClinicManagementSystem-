@@ -27,14 +27,28 @@ async def lifespan(app: FastAPI):
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified/created successfully.")
         
-        # One-time migration: set admin full_name
+        # One-time migration: set admin full_name and ensure admin exists
         db = SessionLocal()
         try:
-            admin = db.query(crud.models.User).filter(crud.models.User.id == 1).first()
-            if admin and not admin.full_name:
-                admin.full_name = "Dawit Ayalew"
+            # Check if any user exists, if not, create default admin
+            admin = db.query(crud.models.User).filter(crud.models.User.username == "admin").first()
+            if not admin:
+                logger.info("No admin user found. Creating default 'admin' user...")
+                new_admin = crud.models.User(
+                    username="admin",
+                    full_name="Dawit Ayalew",
+                    hashed_password=get_password_hash("admin123"),
+                    role="Admin",
+                    is_active=True
+                )
+                db.add(new_admin)
                 db.commit()
-                logger.info("Set admin full_name to 'Dawit Ayalew'")
+                logger.info("Default admin user created successfully.")
+            elif not admin.full_name or admin.role != "Admin":
+                admin.full_name = admin.full_name or "Dawit Ayalew"
+                admin.role = "Admin"
+                db.commit()
+                logger.info("Verified/Updated existing admin user details.")
         finally:
             db.close()
     except Exception as e:
