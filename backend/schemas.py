@@ -171,6 +171,7 @@ class PatientBase(BaseModel):
     age: Optional[int] = None
     sex: Optional[str] = Field(default=None, max_length=10)
     address: Optional[str] = Field(default=None, max_length=250)
+    tin_number: Optional[str] = Field(default=None, max_length=50)
     medical_alerts: Optional[str] = Field(default=None, max_length=500)
 
 class PatientCreate(PatientBase):
@@ -183,6 +184,7 @@ class PatientUpdate(BaseModel):
     age: Optional[int] = None
     sex: Optional[str] = Field(default=None, max_length=10)
     address: Optional[str] = Field(default=None, max_length=250)
+    tin_number: Optional[str] = Field(default=None, max_length=50)
     medical_alerts: Optional[str] = Field(default=None, max_length=500)
 
 class PatientConsentUpdate(BaseModel):

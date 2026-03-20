@@ -562,9 +562,23 @@ const ClinicalHub = () => {
                                             toast.error('Failed to generate consent PDF.');
                                         }
                                     }}
-                                        className="w-full text-left px-5 py-4 text-sm font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-2xl border border-violet-200 flex items-center justify-between transition-all group focus-ring">
-                                        <span>Print Consent Form</span>
+                                        className="w-full text-left px-5 py-4 mb-3 text-sm font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-2xl border border-violet-200 flex items-center justify-between transition-all group focus-ring">
+                                        <span>Print Tooth Removal Consent</span>
                                         <FileText className="w-5 h-5 text-violet-400 group-hover:text-violet-600 transition-colors" />
+                                    </button>
+
+                                    <button onClick={async () => {
+                                        try {
+                                            const res = await api.get(`/documents/patients/${patient.id}/orthodontic-consent/pdf`, { responseType: 'blob' });
+                                            window.open(window.URL.createObjectURL(res.data), '_blank');
+                                        } catch (err) {
+                                            console.error(err);
+                                            toast.error('Failed to generate orthodontic consent PDF.');
+                                        }
+                                    }}
+                                        className="w-full text-left px-5 py-4 text-sm font-bold text-sky-700 bg-sky-50 hover:bg-sky-100 rounded-2xl border border-sky-200 flex items-center justify-between transition-all group focus-ring">
+                                        <span>Print Orthodontic Consent</span>
+                                        <FileText className="w-5 h-5 text-sky-400 group-hover:text-sky-600 transition-colors" />
                                     </button>
                                 </div>
                             </div>

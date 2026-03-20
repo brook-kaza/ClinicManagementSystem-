@@ -29,6 +29,7 @@ class Patient(Base):
     age: Mapped[Optional[int]] = mapped_column()
     sex: Mapped[Optional[str]] = mapped_column(String(10))
     address: Mapped[Optional[str]] = mapped_column(String(250))
+    tin_number: Mapped[Optional[str]] = mapped_column(String(50))
     medical_alerts: Mapped[Optional[str]] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
     

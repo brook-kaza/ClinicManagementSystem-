@@ -181,7 +181,7 @@ def generate_payment_receipt(
     # Left Block (Bill To)
     left_data = [
         ["Bill to", patient.full_name.upper()],
-        ["TIN", "0000000000"],
+        ["TIN", patient.tin_number if patient.tin_number else "Not Provided"],
         ["Address", patient.address.upper() if patient.address else "ADDIS ABABA"],
         ["A/C Number", ""]
     ]
