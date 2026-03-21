@@ -26,10 +26,17 @@ const Registration = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await api.post('/patients', formData);
+            // Cleanse data: convert empty string age to null for Pydantic
+            const submissionData = {
+                ...formData,
+                age: formData.age === '' ? null : parseInt(formData.age, 10)
+            };
+            
+            const response = await api.post('/patients', submissionData);
             toast.success(`Patient ${response.data.full_name} registered successfully!`);
             setFormData({ full_name: '', phone: '', age: '', sex: '', address: '', tin_number: '', medical_alerts: '' });
             setTimeout(() => navigate(`/hub/${response.data.id}`), 1200);
+
         } catch (error) {
             const detail = error.response?.data?.detail;
             let errorMsg = 'Registration failed.';

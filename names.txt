@@ -1,0 +1,5 @@
+clinic-management-system_clinic-backend_1
+clinic-management-system_proxy_1
+clinic-management-system_n8n_1
+b267bb6da73a_clinic-management-system_db_1
+clinic-management-system_frontend_1

@@ -79,7 +79,7 @@ def render_pdf(html_content: str):
 _CSS = """
     @page {
         size: A4;
-        margin: 10mm 15mm; /* Compress margins to ensure 1-page fit */
+        margin: 8mm 12mm; /* Further compressed margins */
     }
 
     body {
@@ -96,17 +96,17 @@ _CSS = """
         padding-bottom: 5px;
         margin-bottom: 10px;
     }
-    .clinic-name {
-        font-size: 22pt; /* Reduced */
+    . clinic-name {
+        font-size: 18pt; /* Reduced from 22pt */
         font-weight: bold;
         color: #111827;
         letter-spacing: 0.5px;
     }
     .contact-info {
-        font-size: 9pt;
+        font-size: 8.5pt; /* Reduced */
         color: #374151;
         text-align: right;
-        line-height: 1.4;
+        line-height: 1.3;
     }
 
     /* ── DOCUMENT TITLE ────────────────────────────────────── */
@@ -165,10 +165,10 @@ _CSS = """
         letter-spacing: 1px;
     }
     .sec-body {
-        padding: 5px 8px;
-        margin-bottom: 8px; /* Reduced from 15px */
-        font-size: 9.5pt;
-        color: #1f2937;
+        padding: 4px 8px; /* Tightened */
+        margin-bottom: 4px; /* Reduced from 8px */
+        font-size: 9pt; /* Reduced */
+        color: #111827;
         background-color: #f9fafb;
         border: 1px solid #e5e7eb;
         border-top: none;
@@ -202,7 +202,7 @@ _CSS = """
     /* ── SIGNATURE ─────────────────────────────────────────── */
     .sig-tbl {
         width: 100%;
-        margin-top: 30px; /* Reduced from 50px */
+        margin-top: 15px; /* Reduced from 30px */
     }
     .sig-rule {
         border-bottom: 1px solid #111827;
@@ -556,14 +556,14 @@ def get_orthodontic_consent_pdf(patient_id: int, db: Session = Depends(get_db), 
 
         <p style="margin: 8px 0;"><b>By signing, I confirm I understand the treatment plan, risks, limitations, and fees. All questions have been answered. No guarantees have been offered.</b></p>
 
-        <table style="width: 100%; margin-top: 15px;">
+        <table style="width: 100%; margin-top: 10px;">
             <tr>
                 <td style="width: 50%;">Patient name: ________________________</td>
                 <td style="width: 50%;">Legal guardian name: ____________________</td>
             </tr>
             <tr>
-                <td style="width: 50%; padding-top: 12px;">Signature: __________________________</td>
-                <td style="width: 50%; padding-top: 12px;">Date: ______________________________</td>
+                <td style="width: 50%; padding-top: 8px;">Signature: __________________________</td>
+                <td style="width: 50%; padding-top: 8px;">Date: ______________________________</td>
             </tr>
         </table>
     </div>

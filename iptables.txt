@@ -1,0 +1,42 @@
+Chain INPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain FORWARD (policy DROP)
+target     prot opt source               destination         
+DOCKER-USER  0    --  0.0.0.0/0            0.0.0.0/0           
+DOCKER-FORWARD  0    --  0.0.0.0/0            0.0.0.0/0           
+
+Chain OUTPUT (policy ACCEPT)
+target     prot opt source               destination         
+
+Chain DOCKER (2 references)
+target     prot opt source               destination         
+ACCEPT     6    --  0.0.0.0/0            172.18.0.6           tcp dpt:80
+ACCEPT     6    --  0.0.0.0/0            172.18.0.5           tcp dpt:5678
+ACCEPT     6    --  0.0.0.0/0            172.18.0.4           tcp dpt:8000
+DROP       0    --  0.0.0.0/0            0.0.0.0/0           
+DROP       0    --  0.0.0.0/0            0.0.0.0/0           
+
+Chain DOCKER-BRIDGE (1 references)
+target     prot opt source               destination         
+DOCKER     0    --  0.0.0.0/0            0.0.0.0/0           
+DOCKER     0    --  0.0.0.0/0            0.0.0.0/0           
+
+Chain DOCKER-CT (1 references)
+target     prot opt source               destination         
+ACCEPT     0    --  0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED
+ACCEPT     0    --  0.0.0.0/0            0.0.0.0/0            ctstate RELATED,ESTABLISHED
+
+Chain DOCKER-FORWARD (1 references)
+target     prot opt source               destination         
+DOCKER-CT  0    --  0.0.0.0/0            0.0.0.0/0           
+DOCKER-INTERNAL  0    --  0.0.0.0/0            0.0.0.0/0           
+DOCKER-BRIDGE  0    --  0.0.0.0/0            0.0.0.0/0           
+ACCEPT     0    --  0.0.0.0/0            0.0.0.0/0           
+ACCEPT     0    --  0.0.0.0/0            0.0.0.0/0           
+
+Chain DOCKER-INTERNAL (1 references)
+target     prot opt source               destination         
+
+Chain DOCKER-USER (1 references)
+target     prot opt source               destination         
