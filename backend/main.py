@@ -59,22 +59,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Dental Management System API", lifespan=lifespan)
 
 # Configure CORS for Frontend
-# Read ALLOWED_ORIGINS from environment, splitting by comma.
-allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
-if allowed_origins_env:
-    origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
-else:
-    # Fallback for local development if env var is missing
-    origins = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:8000",
-        "http://127.0.0.1:8000",
-    ]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"], # Fallback for non-credentials
+    allow_origin_regex="https?://.*", # Dynamic regex logic to accept any valid web origin allowing credentials
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

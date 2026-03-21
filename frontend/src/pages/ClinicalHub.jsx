@@ -468,6 +468,7 @@ const ClinicalHub = () => {
             )}
 
             {activeTab === 'clinical' ? (
+                user?.role === 'Receptionist' ? <AccessDenied /> :
                 <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
                     {/* Odontogram */}
                     <div className="xl:col-span-3 bg-white p-6 sm:p-10 rounded-3xl border border-zinc-200 shadow-xl shadow-zinc-200/50 relative">

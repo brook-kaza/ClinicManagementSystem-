@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import List, Optional
+import datetime
 import models
 import schemas
 
@@ -69,6 +70,26 @@ def search_patients(db: Session, query: str) -> List[models.Patient]:
     return db.query(models.Patient).filter(*conditions).all()
 
 def create_patient(db: Session, patient: schemas.PatientCreate) -> models.Patient:
+    # Auto-generate card_number HDC-YYYY-XXX
+    current_year = datetime.datetime.now().year
+    prefix = f"HDC-{current_year}-"
+    
+    # Find the latest patient created this year to increment the sequence safely
+    latest_patient = db.query(models.Patient).filter(
+        models.Patient.card_number.like(f"{prefix}%")
+    ).order_by(models.Patient.id.desc()).first()
+    
+    if latest_patient and latest_patient.card_number.startswith(prefix):
+        try:
+            sequence = int(latest_patient.card_number.split("-")[-1])
+            new_sequence = sequence + 1
+        except ValueError:
+            new_sequence = 1
+    else:
+        new_sequence = 1
+        
+    patient.card_number = f"{prefix}{new_sequence:03d}"
+    
     db_patient = models.Patient(**patient.model_dump())
     db.add(db_patient)
     db.commit()

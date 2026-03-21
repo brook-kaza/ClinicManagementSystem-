@@ -165,7 +165,7 @@ class InvoiceRead(InvoiceBase):
 # --- Patient Schemas ---
 
 class PatientBase(BaseModel):
-    card_number: str = Field(min_length=1, max_length=50)
+    card_number: Optional[str] = Field(default=None, max_length=50)
     full_name: str = Field(min_length=1, max_length=150)
     phone: Optional[str] = Field(default=None, max_length=20)
     age: Optional[int] = None

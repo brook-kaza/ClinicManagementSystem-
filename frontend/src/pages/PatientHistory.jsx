@@ -217,21 +217,25 @@ const PatientHistory = () => {
                         <button onClick={() => navigate(`/hub/${patient.id}`)} className="flex items-center justify-center gap-2 px-6 py-4 border-2 border-zinc-200 rounded-2xl text-sm font-bold text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-all focus-ring bg-white">
                             <ArrowLeft className="w-5 h-5" /> Clinical Hub
                         </button>
+                        {user?.role !== 'Receptionist' && (
                         <button onClick={async () => { try { const res = await api.get(`/documents/patients/${patient.id}/consent-form/pdf`, { responseType: 'blob' }); window.open(window.URL.createObjectURL(res.data), '_blank'); } catch (err) { console.error(err); toast.error('Failed to generate consent PDF.'); } }}
                             className="flex items-center justify-center gap-2 px-6 py-4 border-2 border-violet-200 rounded-2xl text-sm font-bold text-violet-600 hover:bg-violet-50 hover:text-violet-700 transition-all focus-ring bg-white">
                             <FileText className="w-5 h-5" /> Print Consent
                         </button>
+                        )}
+                        {user?.role !== 'Receptionist' && (
                         <button onClick={() => setShowAddVisit(!showAddVisit)}
                             className={`flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-sm text-white transition-all focus-ring shadow-lg ${showAddVisit ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'}`}>
                             {showAddVisit ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                             {showAddVisit ? 'Cancel' : 'Record Visit'}
                         </button>
+                        )}
                     </div>
                 </div>
             )}
 
             {/* Form */}
-            {showAddVisit && (
+            {showAddVisit && user?.role !== 'Receptionist' && (
                 <div ref={formRef} className="bg-white rounded-3xl border border-zinc-200 p-8 sm:p-10 mb-8 shadow-2xl shadow-zinc-200/50 animate-slide-up relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
                     <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-widest mb-8 flex items-center gap-3 border-b border-zinc-100 pb-4 relative z-10">

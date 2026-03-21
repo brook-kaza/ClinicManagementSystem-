@@ -488,7 +488,7 @@ def get_consent_form_pdf(patient_id: int, db: Session = Depends(get_db), current
     local_issued = models.get_local_time_eat()
     patient_block = _build_patient_block(patient, "Consent", "CONSENT", local_issued)
 
-    consent_content = f"""
+    consent_content = """
     <div style="font-size: 11pt; line-height: 1.6;">
         <p>I understand that the extraction of a tooth (teeth) has been recommended by my dentist. 
         I have had any alternative treatment (if any) explained to me, as well as the consequences of doing nothing about my dental conditions. 
@@ -501,7 +501,7 @@ def get_consent_form_pdf(patient_id: int, db: Session = Depends(get_db), current
             <li>Damage to adjacent teeth or fillings</li>
             <li>Drug reactions and side effects</li>
             <li>Bleeding requiring more treatment</li>
-            <li>Possibility of a small fragment of root or bone being left in the jaw intentionally when its removal is not appropriate (such fragments may work their way partially out of the tissue and need to be removed later)</li>
+            <li>Possibility of a small fragment of root or bone being left in the jaw intentionally when its removal is not appropriate</li>
             <li>Delayed healing (dry socket) necessitating several post-operative visits</li>
             <li>Damage to sinuses requiring additional treatment or surgical repair at a later date</li>
             <li>Fracture or dislocation of the jaw</li>
@@ -534,7 +534,7 @@ def get_consent_form_pdf(patient_id: int, db: Session = Depends(get_db), current
 
 @router.get("/patients/{patient_id}/orthodontic-consent/pdf")
 def get_orthodontic_consent_pdf(patient_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
-    """Generate professional 1-page PDF for Orthodontic Treatment Consent form for a specific patient."""
+    """Generate professional 1-page PDF for Orthodontic Treatment Consent form."""
     patient = db.query(models.Patient).filter(models.Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -542,29 +542,28 @@ def get_orthodontic_consent_pdf(patient_id: int, db: Session = Depends(get_db), 
     local_issued = models.get_local_time_eat()
     patient_block = _build_patient_block(patient, "Consent", "CONSENT", local_issued)
 
-    consent_content = f"""
-    <div style="font-size: 11pt; line-height: 1.6;">
-        <h4 style="margin: 0 0 10px 0; color: #1f2937; text-transform: uppercase;">Orthodontic Treatment Overview</h4>
-        <p style="margin: 0 0 10px 0;">I understand that orthodontic treatment involves risks and commitments. By proceeding, I acknowledge and accept the following conditions:</p>
+    consent_content = """
+    <div style="font-size: 9pt; line-height: 1.3;">
+        <p style="margin: 0 0 6px 0;">I understand that orthodontic treatment involves risks and commitments. By proceeding, I acknowledge and accept the following:</p>
         
-        <ul style="margin: 0 0 15px 20px; padding: 0;">
-            <li style="margin-bottom: 5px;"><b>Oral Hygiene:</b> Excellent brushing and flossing are mandatory. Failure to maintain hygiene can lead to permanent decalcification (white spots), tooth decay, and gum disease.</li>
-            <li style="margin-bottom: 5px;"><b>Appointments & Cooperation:</b> I must attend all scheduled adjustments and wear elastics/headgear exactly as prescribed. Poor cooperation will extend treatment time and compromise results.</li>
-            <li style="margin-bottom: 5px;"><b>Biological Risks:</b> Roots may shorten (resorption), which usually does not affect tooth health but occasionally threatens longevity. Existing TMJ (jaw joint) issues may persist or flair up during or after treatment.</li>
-            <li style="margin-bottom: 5px;"><b>Estimated Duration:</b> The proposed treatment time is only an estimate. Complexities or missing appointments inevitably extend the time in active appliances.</li>
-            <li style="margin-bottom: 5px;"><b>Retention Phase:</b> Teeth have a tendency to relapse. Lifetime retainer wear is the only way to prevent teeth from shifting post-treatment.</li>
+        <ul style="margin: 0 0 8px 15px; padding: 0;">
+            <li style="margin-bottom: 3px;"><b>Oral Hygiene:</b> Excellent brushing/flossing is mandatory. Poor hygiene may cause decalcification, decay, and gum disease.</li>
+            <li style="margin-bottom: 3px;"><b>Appointments &amp; Cooperation:</b> All scheduled adjustments must be attended. Elastics/headgear must be worn as prescribed. Non-compliance extends treatment time.</li>
+            <li style="margin-bottom: 3px;"><b>Biological Risks:</b> Root resorption may occur. TMJ issues may persist or worsen during/after treatment.</li>
+            <li style="margin-bottom: 3px;"><b>Duration:</b> Treatment time is an estimate only. Missed appointments or complications may extend treatment.</li>
+            <li style="margin-bottom: 3px;"><b>Retention:</b> Teeth tend to relapse. Lifetime retainer wear is required to maintain results.</li>
         </ul>
 
-        <p style="margin: 15px 0;"><b>By providing my signature, I certify that I understand the recommended orthodontic treatment, the risks and limitations of treatment, and the fee structure. I have had all of my questions answered, and have not been offered any guarantees of perfectly straight teeth without my full cooperation.</b></p>
+        <p style="margin: 8px 0;"><b>By signing, I confirm I understand the treatment plan, risks, limitations, and fees. All questions have been answered. No guarantees have been offered.</b></p>
 
-        <table style="width: 100%; margin-top: 30px;">
+        <table style="width: 100%; margin-top: 15px;">
             <tr>
                 <td style="width: 50%;">Patient name: ________________________</td>
                 <td style="width: 50%;">Legal guardian name: ____________________</td>
             </tr>
             <tr>
-                <td style="width: 50%; padding-top: 20px;">Signature: __________________________</td>
-                <td style="width: 50%; padding-top: 20px;">Date: ______________________________</td>
+                <td style="width: 50%; padding-top: 12px;">Signature: __________________________</td>
+                <td style="width: 50%; padding-top: 12px;">Date: ______________________________</td>
             </tr>
         </table>
     </div>
@@ -577,5 +576,3 @@ def get_orthodontic_consent_pdf(patient_id: int, db: Session = Depends(get_db), 
     if pdf:
         return Response(content=pdf, media_type="application/pdf")
     raise HTTPException(status_code=500, detail="PDF generation failed")
-
-
