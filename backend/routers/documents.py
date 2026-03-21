@@ -489,35 +489,23 @@ def get_consent_form_pdf(patient_id: int, db: Session = Depends(get_db), current
     patient_block = _build_patient_block(patient, "Consent", "CONSENT", local_issued)
 
     consent_content = """
-    <div style="font-size: 9pt; line-height: 1.2;">
+    <div style="font-size: 9.5pt; line-height: 1.4;">
         <p>I understand that the extraction of a tooth (teeth) has been recommended by my dentist. 
         I have had any alternative treatment (if any) explained to me, as well as the consequences of doing nothing about my dental conditions. 
         I understand that non-treatment may result in, but not be limited to: infection, swelling, pain, periodontal disease, malocclusion (damage to the way the teeth hit together) and systemic disease/infection.</p>
         
-        <p>I understand that there are risks associated with any dental, surgical, and anesthetic procedure. These include, but are not limited to:</p>
-        <ul style="margin-left: 20px;">
-            <li>Post-operative infection or inflammation</li>
-            <li>Swelling, bruising, and pain</li>
-            <li>Damage to adjacent teeth or fillings</li>
-            <li>Drug reactions and side effects</li>
-            <li>Bleeding requiring more treatment</li>
-            <li>Possibility of a small fragment of root or bone being left in the jaw intentionally when its removal is not appropriate</li>
-            <li>Delayed healing (dry socket) necessitating several post-operative visits</li>
-            <li>Damage to sinuses requiring additional treatment or surgical repair at a later date</li>
-            <li>Fracture or dislocation of the jaw</li>
-            <li>Damage to the nerves during tooth removal resulting in temporary, or possibly partial or permanent numbness or tingling of the lip, chin, tongue, or other areas</li>
-        </ul>
+        <p>I understand that there are risks associated with any dental, surgical, and anesthetic procedure. <b>These risks include, but are not limited to:</b> post-operative infection or inflammation; swelling, bruising, and pain; damage to adjacent teeth or fillings; drug reactions and side effects; bleeding requiring more treatment; possibility of a small fragment of root or bone being left in the jaw intentionally when its removal is not appropriate; delayed healing (dry socket) necessitating several post-operative visits; damage to sinuses requiring additional treatment or surgical repair at a later date; fracture or dislocation of the jaw; and damage to the nerves during tooth removal resulting in temporary, or possibly partial or permanent numbness or tingling of the lip, chin, tongue, or other areas.</p>
 
         <p>By providing my signature, I certify that I understand the recommended treatment, the fee involved, the risks of such treatment, any alternatives and risks of these alternatives, including the consequences of doing nothing. I have had all of my questions answered, and have not been offered any guarantees.</p>
 
-        <table style="width: 100%; margin-top: 15px;">
+        <table style="width: 100%; margin-top: 20px;">
             <tr>
                 <td style="width: 50%;">Patient name: ________________________</td>
                 <td style="width: 50%;">Legal guardian name: ____________________</td>
             </tr>
             <tr>
-                <td style="width: 50%; padding-top: 10px;">Signature: __________________________</td>
-                <td style="width: 50%; padding-top: 10px;">Date: ______________________________</td>
+                <td style="width: 50%; padding-top: 20px;">Signature: __________________________</td>
+                <td style="width: 50%; padding-top: 20px;">Date: ______________________________</td>
             </tr>
         </table>
     </div>
@@ -543,27 +531,27 @@ def get_orthodontic_consent_pdf(patient_id: int, db: Session = Depends(get_db), 
     patient_block = _build_patient_block(patient, "Consent", "CONSENT", local_issued)
 
     consent_content = """
-    <div style="font-size: 8.5pt; line-height: 1.2;">
-        <p style="margin: 0 0 6px 0;">I understand that orthodontic treatment involves risks and commitments. By proceeding, I acknowledge and accept the following:</p>
+    <div style="font-size: 10.5pt; line-height: 1.6;">
+        <p style="margin: 0 0 10px 0;">I understand that orthodontic treatment involves risks and commitments. By proceeding, I acknowledge and accept the following:</p>
         
-        <ul style="margin: 0 0 8px 15px; padding: 0;">
-            <li style="margin-bottom: 3px;"><b>Oral Hygiene:</b> Excellent brushing/flossing is mandatory. Poor hygiene may cause decalcification, decay, and gum disease.</li>
-            <li style="margin-bottom: 3px;"><b>Appointments &amp; Cooperation:</b> All scheduled adjustments must be attended. Elastics/headgear must be worn as prescribed. Non-compliance extends treatment time.</li>
-            <li style="margin-bottom: 3px;"><b>Biological Risks:</b> Root resorption may occur. TMJ issues may persist or worsen during/after treatment.</li>
-            <li style="margin-bottom: 3px;"><b>Duration:</b> Treatment time is an estimate only. Missed appointments or complications may extend treatment.</li>
-            <li style="margin-bottom: 3px;"><b>Retention:</b> Teeth tend to relapse. Lifetime retainer wear is required to maintain results.</li>
+        <ul style="margin: 0 0 15px 20px; padding: 0;">
+            <li style="margin-bottom: 6px;"><b>Oral Hygiene:</b> Excellent brushing/flossing is mandatory. Poor hygiene may cause decalcification, decay, and gum disease.</li>
+            <li style="margin-bottom: 6px;"><b>Appointments &amp; Cooperation:</b> All scheduled adjustments must be attended. Elastics/headgear must be worn as prescribed. Non-compliance extends treatment time.</li>
+            <li style="margin-bottom: 6px;"><b>Biological Risks:</b> Root resorption may occur. TMJ issues may persist or worsen during/after treatment.</li>
+            <li style="margin-bottom: 6px;"><b>Duration:</b> Treatment time is an estimate only. Missed appointments or complications may extend treatment.</li>
+            <li style="margin-bottom: 6px;"><b>Retention:</b> Teeth tend to relapse. Lifetime retainer wear is required to maintain results.</li>
         </ul>
 
-        <p style="margin: 8px 0;"><b>By signing, I confirm I understand the treatment plan, risks, limitations, and fees. All questions have been answered. No guarantees have been offered.</b></p>
+        <p style="margin: 15px 0;"><b>By signing, I confirm I understand the treatment plan, risks, limitations, and fees. All questions have been answered. No guarantees have been offered.</b></p>
 
-        <table style="width: 100%; margin-top: 5px;">
+        <table style="width: 100%; margin-top: 40px;">
             <tr>
                 <td style="width: 50%;">Patient name: ________________________</td>
                 <td style="width: 50%;">Legal guardian name: ____________________</td>
             </tr>
             <tr>
-                <td style="width: 50%; padding-top: 5px;">Signature: __________________________</td>
-                <td style="width: 50%; padding-top: 5px;">Date: ______________________________</td>
+                <td style="width: 50%; padding-top: 25px;">Signature: __________________________</td>
+                <td style="width: 50%; padding-top: 25px;">Date: ______________________________</td>
             </tr>
         </table>
     </div>
