@@ -1,6 +1,0 @@
-CONTAINER ID   IMAGE                                     COMMAND                  CREATED          STATUS                    PORTS                                         NAMES
-7c5dc8597c59   nginx:alpine                              "/docker-entrypoint.…"   21 minutes ago   Up 21 minutes             0.0.0.0:80->80/tcp, [::]:80->80/tcp           clinic-management-system_proxy_1
-53385936b177   n8nio/n8n:latest                          "tini -- /docker-ent…"   21 minutes ago   Up 21 minutes             0.0.0.0:5678->5678/tcp, [::]:5678->5678/tcp   clinic-management-system_n8n_1
-6d35e878a0b8   clinic-management-system_clinic-backend   "gunicorn -w 4 -k uv…"   21 minutes ago   Up 21 minutes             0.0.0.0:8000->8000/tcp, [::]:8000->8000/tcp   clinic-management-system_clinic-backend_1
-b267bb6da73a   postgres:15-alpine                        "docker-entrypoint.s…"   21 minutes ago   Up 21 minutes (healthy)   5432/tcp                                      clinic-management-system_db_1
-82293be1de99   clinic-management-system_frontend         "sh -c 'while true; …"   21 minutes ago   Up 21 minutes                                                           clinic-management-system_frontend_1

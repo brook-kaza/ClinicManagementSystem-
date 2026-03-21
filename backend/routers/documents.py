@@ -489,7 +489,7 @@ def get_consent_form_pdf(patient_id: int, db: Session = Depends(get_db), current
     patient_block = _build_patient_block(patient, "Consent", "CONSENT", local_issued)
 
     consent_content = """
-    <div style="font-size: 11pt; line-height: 1.6;">
+    <div style="font-size: 9pt; line-height: 1.2;">
         <p>I understand that the extraction of a tooth (teeth) has been recommended by my dentist. 
         I have had any alternative treatment (if any) explained to me, as well as the consequences of doing nothing about my dental conditions. 
         I understand that non-treatment may result in, but not be limited to: infection, swelling, pain, periodontal disease, malocclusion (damage to the way the teeth hit together) and systemic disease/infection.</p>
@@ -510,14 +510,14 @@ def get_consent_form_pdf(patient_id: int, db: Session = Depends(get_db), current
 
         <p>By providing my signature, I certify that I understand the recommended treatment, the fee involved, the risks of such treatment, any alternatives and risks of these alternatives, including the consequences of doing nothing. I have had all of my questions answered, and have not been offered any guarantees.</p>
 
-        <table style="width: 100%; margin-top: 30px;">
+        <table style="width: 100%; margin-top: 15px;">
             <tr>
                 <td style="width: 50%;">Patient name: ________________________</td>
                 <td style="width: 50%;">Legal guardian name: ____________________</td>
             </tr>
             <tr>
-                <td style="width: 50%; padding-top: 20px;">Signature: __________________________</td>
-                <td style="width: 50%; padding-top: 20px;">Date: ______________________________</td>
+                <td style="width: 50%; padding-top: 10px;">Signature: __________________________</td>
+                <td style="width: 50%; padding-top: 10px;">Date: ______________________________</td>
             </tr>
         </table>
     </div>
@@ -543,7 +543,7 @@ def get_orthodontic_consent_pdf(patient_id: int, db: Session = Depends(get_db), 
     patient_block = _build_patient_block(patient, "Consent", "CONSENT", local_issued)
 
     consent_content = """
-    <div style="font-size: 9pt; line-height: 1.3;">
+    <div style="font-size: 8.5pt; line-height: 1.2;">
         <p style="margin: 0 0 6px 0;">I understand that orthodontic treatment involves risks and commitments. By proceeding, I acknowledge and accept the following:</p>
         
         <ul style="margin: 0 0 8px 15px; padding: 0;">
@@ -556,14 +556,14 @@ def get_orthodontic_consent_pdf(patient_id: int, db: Session = Depends(get_db), 
 
         <p style="margin: 8px 0;"><b>By signing, I confirm I understand the treatment plan, risks, limitations, and fees. All questions have been answered. No guarantees have been offered.</b></p>
 
-        <table style="width: 100%; margin-top: 10px;">
+        <table style="width: 100%; margin-top: 5px;">
             <tr>
                 <td style="width: 50%;">Patient name: ________________________</td>
                 <td style="width: 50%;">Legal guardian name: ____________________</td>
             </tr>
             <tr>
-                <td style="width: 50%; padding-top: 8px;">Signature: __________________________</td>
-                <td style="width: 50%; padding-top: 8px;">Date: ______________________________</td>
+                <td style="width: 50%; padding-top: 5px;">Signature: __________________________</td>
+                <td style="width: 50%; padding-top: 5px;">Date: ______________________________</td>
             </tr>
         </table>
     </div>

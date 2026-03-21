@@ -1,7 +1,0 @@
-Using DB container: b267bb6da73a_clinic-management-system_db_1
-DELETE 0
- id | username |  full_name   | role  
-----+----------+--------------+-------
-  1 | admin    | Dawit Ayalew | Admin
-(1 row)
-

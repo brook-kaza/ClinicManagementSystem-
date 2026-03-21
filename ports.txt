@@ -1,6 +1,0 @@
-LISTEN 0      4096         0.0.0.0:80        0.0.0.0:*    users:(("docker-proxy",pid=5476,fd=8))                 
-LISTEN 0      4096         0.0.0.0:5678      0.0.0.0:*    users:(("docker-proxy",pid=5381,fd=8))                 
-LISTEN 0      4096         0.0.0.0:8000      0.0.0.0:*    users:(("docker-proxy",pid=5338,fd=8))                 
-LISTEN 0      4096            [::]:80           [::]:*    users:(("docker-proxy",pid=5483,fd=8))                 
-LISTEN 0      4096            [::]:5678         [::]:*    users:(("docker-proxy",pid=5387,fd=8))                 
-LISTEN 0      4096            [::]:8000         [::]:*    users:(("docker-proxy",pid=5343,fd=8))                 
