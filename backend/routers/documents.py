@@ -489,23 +489,23 @@ def get_consent_form_pdf(patient_id: int, db: Session = Depends(get_db), current
     patient_block = _build_patient_block(patient, "Consent", "CONSENT", local_issued)
 
     consent_content = """
-    <div style="font-size: 9.5pt; line-height: 1.4;">
-        <p>I understand that the extraction of a tooth (teeth) has been recommended by my dentist. 
+    <div style="font-size: 8.5pt; line-height: 1.25;">
+        <p style="margin-bottom: 8px;">I understand that the extraction of a tooth (teeth) has been recommended by my dentist. 
         I have had any alternative treatment (if any) explained to me, as well as the consequences of doing nothing about my dental conditions. 
         I understand that non-treatment may result in, but not be limited to: infection, swelling, pain, periodontal disease, malocclusion (damage to the way the teeth hit together) and systemic disease/infection.</p>
         
-        <p>I understand that there are risks associated with any dental, surgical, and anesthetic procedure. <b>These risks include, but are not limited to:</b> post-operative infection or inflammation; swelling, bruising, and pain; damage to adjacent teeth or fillings; drug reactions and side effects; bleeding requiring more treatment; possibility of a small fragment of root or bone being left in the jaw intentionally when its removal is not appropriate; delayed healing (dry socket) necessitating several post-operative visits; damage to sinuses requiring additional treatment or surgical repair at a later date; fracture or dislocation of the jaw; and damage to the nerves during tooth removal resulting in temporary, or possibly partial or permanent numbness or tingling of the lip, chin, tongue, or other areas.</p>
+        <p style="margin-bottom: 8px;">I understand that there are risks associated with any dental, surgical, and anesthetic procedure. <b>These risks include, but are not limited to:</b> post-operative infection or inflammation; swelling, bruising, and pain; damage to adjacent teeth or fillings; drug reactions and side effects; bleeding requiring more treatment; possibility of a small fragment of root or bone being left in the jaw intentionally when its removal is not appropriate; delayed healing (dry socket) necessitating several post-operative visits; damage to sinuses requiring additional treatment or surgical repair at a later date; fracture or dislocation of the jaw; and damage to the nerves during tooth removal resulting in temporary, or possibly partial or permanent numbness or tingling of the lip, chin, tongue, or other areas.</p>
 
-        <p>By providing my signature, I certify that I understand the recommended treatment, the fee involved, the risks of such treatment, any alternatives and risks of these alternatives, including the consequences of doing nothing. I have had all of my questions answered, and have not been offered any guarantees.</p>
+        <p style="margin-bottom: 8px;">By providing my signature, I certify that I understand the recommended treatment, the fee involved, the risks of such treatment, any alternatives and risks of these alternatives, including the consequences of doing nothing. I have had all of my questions answered, and have not been offered any guarantees.</p>
 
-        <table style="width: 100%; margin-top: 20px;">
+        <table style="width: 100%; margin-top: 10px;">
             <tr>
                 <td style="width: 50%;">Patient name: ________________________</td>
                 <td style="width: 50%;">Legal guardian name: ____________________</td>
             </tr>
             <tr>
-                <td style="width: 50%; padding-top: 20px;">Signature: __________________________</td>
-                <td style="width: 50%; padding-top: 20px;">Date: ______________________________</td>
+                <td style="width: 50%; padding-top: 15px;">Signature: __________________________</td>
+                <td style="width: 50%; padding-top: 15px;">Date: ______________________________</td>
             </tr>
         </table>
     </div>
