@@ -93,7 +93,7 @@ async def upload_xray(
         raise HTTPException(status_code=400, detail=f"File too large ({file_size_mb:.1f}MB). Maximum allowed is 10MB.")
     
     # Extension check (primary validation — more reliable than MIME type)
-    allowed_extensions = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tiff", ".tif", ".svg", ".heic"]
+    allowed_extensions = [".jpg", ".jpeg", ".jfif", ".png", ".webp", ".bmp", ".gif", ".tiff", ".tif", ".svg", ".heic"]
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in allowed_extensions:
         raise HTTPException(
