@@ -1,5 +1,5 @@
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 import crud
@@ -23,6 +23,7 @@ WINDOW_SECONDS = 60
 @router.post("/token", response_model=schemas.Token)
 def login_for_access_token(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(), 
     db: Session = Depends(get_db)
 ):
@@ -54,7 +55,23 @@ def login_for_access_token(
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
+    
+    import os
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {access_token}",
+        httponly=True,
+        secure=os.getenv("ENVIRONMENT") == "production",
+        samesite="lax",
+        max_age=int(ACCESS_TOKEN_EXPIRE_MINUTES) * 60
+    )
+    
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/logout")
+def logout(response: Response):
+    response.delete_cookie("access_token")
+    return {"message": "Logged out successfully"}
 
 @router.get("/users/me", response_model=schemas.UserRead)
 def read_users_me(current_user: models.User = Depends(get_current_active_user)):

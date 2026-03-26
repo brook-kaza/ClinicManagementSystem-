@@ -191,6 +191,15 @@ class PatientConsentUpdate(BaseModel):
     consent_given: bool
     consent_by: str
 
+class PatientListRead(PatientBase):
+    """Lightweight schema primarily used for lists to prevent N+1 query bottlenecks."""
+    id: int
+    created_at: Optional[datetime] = None
+    consent_given: bool = False
+    consent_date: Optional[datetime] = None
+    consent_by: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
 class PatientRead(PatientBase):
     id: int
     created_at: Optional[datetime] = None

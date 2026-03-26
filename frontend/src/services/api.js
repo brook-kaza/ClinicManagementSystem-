@@ -7,16 +7,15 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || `${SERVER_BASE_URL}/
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  // Token manually injected via localStorage has been REMOVED for strict XSS protection.
+  // The system now natively utilizes HttpOnly secure cookies via withCredentials: true.
   // When uploading files via FormData, the browser must set
   // Content-Type itself (including the multipart boundary hash).
   // If we leave the default 'application/json', file uploads break.

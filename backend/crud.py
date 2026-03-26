@@ -74,27 +74,40 @@ def create_patient(db: Session, patient: schemas.PatientCreate) -> models.Patien
     current_year = datetime.datetime.now().year
     prefix = f"HDC-{current_year}-"
     
-    # Find the latest patient created this year to increment the sequence safely
-    latest_patient = db.query(models.Patient).filter(
-        models.Patient.card_number.like(f"{prefix}%")
-    ).order_by(models.Patient.id.desc()).first()
+    import time
+    from sqlalchemy.exc import IntegrityError
     
-    if latest_patient and latest_patient.card_number.startswith(prefix):
-        try:
-            sequence = int(latest_patient.card_number.split("-")[-1])
-            new_sequence = sequence + 1
-        except ValueError:
-            new_sequence = 1
-    else:
-        new_sequence = 1
+    max_retries = 5
+    for attempt in range(max_retries):
+        # Find the latest patient created this year to increment the sequence safely
+        latest_patient = db.query(models.Patient).filter(
+            models.Patient.card_number.like(f"{prefix}%")
+        ).order_by(models.Patient.id.desc()).first()
         
-    patient.card_number = f"{prefix}{new_sequence:03d}"
-    
-    db_patient = models.Patient(**patient.model_dump())
-    db.add(db_patient)
-    db.commit()
-    db.refresh(db_patient)
-    return db_patient
+        if latest_patient and latest_patient.card_number.startswith(prefix):
+            try:
+                sequence = int(latest_patient.card_number.split("-")[-1])
+                new_sequence = sequence + 1
+            except ValueError:
+                new_sequence = 1
+        else:
+            new_sequence = 1
+            
+        patient.card_number = f"{prefix}{new_sequence:03d}"
+        
+        db_patient = models.Patient(**patient.model_dump())
+        db.add(db_patient)
+        
+        try:
+            db.commit()
+            db.refresh(db_patient)
+            return db_patient
+        except IntegrityError:
+            db.rollback()
+            if attempt < max_retries - 1:
+                time.sleep(0.1) # Brief yield in case of concurrent sequence overlap
+                continue
+            raise # Let global exception handler catch it on final failure
 
 def update_patient(db: Session, db_patient: models.Patient, patient_update: schemas.PatientUpdate) -> models.Patient:
     update_data = patient_update.model_dump(exclude_unset=True)

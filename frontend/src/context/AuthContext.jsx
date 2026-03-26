@@ -7,7 +7,7 @@ const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [token, setToken] = useState(localStorage.getItem('isAuthenticated') === 'true' ? 'cookie_active' : null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -17,10 +17,14 @@ export const AuthProvider = ({ children }) => {
 
     if (token) {
       api.get('/users/me')
-        .then(res => setUser(res.data))
+        .then(res => {
+            setUser(res.data);
+            setToken('cookie_active');
+            localStorage.setItem('isAuthenticated', 'true');
+        })
         .catch(() => {
           setToken(null);
-          localStorage.removeItem('token');
+          localStorage.removeItem('isAuthenticated');
         })
         .finally(() => setLoading(false));
     } else {
@@ -34,14 +38,13 @@ export const AuthProvider = ({ children }) => {
     formData.append('password', password);
 
     try {
-      // Auth endpoint requires form-urlencoded
-      const res = await axios.post(`${API_BASE_URL}/token`, formData, {
+      // Auth endpoint requires form-urlencoded. Using 'api' ensures withCredentials is automatically applied
+      const res = await api.post(`/token`, formData, {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
 
-      const newToken = res.data.access_token;
-      setToken(newToken);
-      localStorage.setItem('token', newToken);
+      setToken('cookie_active');
+      localStorage.setItem('isAuthenticated', 'true');
     } catch (error) {
       if (error.response) {
         if (error.response.status === 401) {
@@ -57,10 +60,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
+  const logout = async () => {
+    try {
+      await api.post('/logout');
+    } catch (e) {
+      console.error("Logout failed on server.", e);
+    } finally {
+      setToken(null);
+      setUser(null);
+      localStorage.removeItem('isAuthenticated');
+    }
   };
 
   return (

@@ -25,7 +25,7 @@ def create_patient(
     # Let the global IntegrityError handler in main.py catch database-level issues
     return crud.create_patient(db=db, patient=patient)
 
-@router.get("", response_model=List[schemas.PatientRead])
+@router.get("", response_model=List[schemas.PatientListRead])
 def read_patients(
     skip: int = 0, limit: int = 100, 
     db: Session = Depends(get_db),
@@ -33,7 +33,7 @@ def read_patients(
 ):
     return crud.get_patients(db, skip=skip, limit=limit)
 
-@router.get("/search", response_model=List[schemas.PatientRead])
+@router.get("/search", response_model=List[schemas.PatientListRead])
 def search_patients(
     q: str = Query(..., description="Search by card number or phone"), 
     db: Session = Depends(get_db),

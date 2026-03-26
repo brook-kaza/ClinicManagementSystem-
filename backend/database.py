@@ -9,14 +9,18 @@ load_dotenv()
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./dental_management.db")
 
 # SQLite needs thread checks disabled, Postgres doesn't
-connect_args = {}
+engine_kwargs = {"pool_pre_ping": True}
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False, "timeout": 15}
+    engine_kwargs["connect_args"] = connect_args
+else:
+    # Explicit pool sizing for robust production environments
+    engine_kwargs["pool_size"] = 20
+    engine_kwargs["max_overflow"] = 50
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
-    connect_args=connect_args, 
-    pool_pre_ping=True
+    **engine_kwargs
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

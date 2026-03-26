@@ -7,7 +7,8 @@ from database import Base
 EAT_TZ = timezone(timedelta(hours=3))
 
 def get_local_time_eat():
-    return datetime.now(EAT_TZ).replace(tzinfo=None)
+    # Legacy name kept for compatibility, but now strictly returns UTC naive time for robust DB storage
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 class User(Base):
     __tablename__ = "users"
