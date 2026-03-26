@@ -30,12 +30,20 @@ def create_appointment(
     current_user: models.User = Depends(get_current_active_user)
 ):
     """Create a new appointment with conflict check."""
-    if appointment.start_time >= appointment.end_time:
+    # Force incoming Pydantic timestamps to Naive to prevent Python TypeError crashes during naive-localtime comparison
+    start_time_naive = appointment.start_time.replace(tzinfo=None)
+    end_time_naive = appointment.end_time.replace(tzinfo=None)
+    
+    if start_time_naive >= end_time_naive:
         raise HTTPException(status_code=400, detail="Start time must be before end time.")
         
-    now = datetime.now()
-    if appointment.start_time < now:
+    now = models.get_local_time_eat()
+    if start_time_naive < now:
         raise HTTPException(status_code=400, detail="Cannot book appointments in the past.")
+
+    # Mutate the schema before passing it to DB to ensure strictly naive saves
+    appointment.start_time = start_time_naive
+    appointment.end_time = end_time_naive
 
     # Check if patient exists
     patient = crud.get_patient(db, patient_id=appointment.patient_id)
@@ -71,7 +79,12 @@ def update_appointment(
     if not db_appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
-    # If time is updating, check for conflicts
+    # If time is updating, carefully cast any new times to purely naive local to avoid cross-tz crashes
+    if appointment_update.start_time:
+        appointment_update.start_time = appointment_update.start_time.replace(tzinfo=None)
+    if appointment_update.end_time:
+        appointment_update.end_time = appointment_update.end_time.replace(tzinfo=None)
+        
     if appointment_update.start_time or appointment_update.end_time:
         new_start = appointment_update.start_time or db_appointment.start_time
         new_end = appointment_update.end_time or db_appointment.end_time
@@ -115,12 +128,12 @@ def get_available_slots(
     END_HOUR = 17
     SLOT_DURATION = 30 # minutes
     
-    # Ensure we use the date correctly
-    day_start = date.replace(hour=START_HOUR, minute=0, second=0, microsecond=0)
-    day_end = date.replace(hour=END_HOUR, minute=0, second=0, microsecond=0)
+    # Ensure we use the date correctly and safely strip Pydantic timezone-aware artifacts
+    day_start = date.replace(hour=START_HOUR, minute=0, second=0, microsecond=0, tzinfo=None)
+    day_end = date.replace(hour=END_HOUR, minute=0, second=0, microsecond=0, tzinfo=None)
     
-    now = datetime.now()
-    if day_end < now:
+    now = models.get_local_time_eat()
+    if day_end <= now:
         return {"date": date.date(), "doctor_id": doctor_id, "available_slots": []}
     
     # Fetch existing appointments for this doctor today

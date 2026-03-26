@@ -8,6 +8,7 @@ import { PrescriptionForm, SickLeaveForm, ReferralForm } from '../components/Doc
 import PatientBilling from '../components/PatientBilling';
 import AccessDenied from '../components/AccessDenied';
 import ConfirmModal from '../components/ConfirmModal';
+import BookingModal from '../components/BookingModal';
 import toast from 'react-hot-toast';
 
 const TOOTH_NUMBERS = Array.from({ length: 32 }, (_, i) => i + 1);
@@ -196,6 +197,7 @@ const ClinicalHub = () => {
     const [showEditPatientModal, setShowEditPatientModal] = useState(false);
     const [editPatientData, setEditPatientData] = useState({ full_name: '', phone: '', age: '', sex: '', address: '', medical_alerts: '' });
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+    const [showBookingModal, setShowBookingModal] = useState(false);
 
     useEffect(() => { fetchPatientData(); }, [patientId]);
 
@@ -535,8 +537,13 @@ const ClinicalHub = () => {
 
                             <div className="relative z-10">
                                 <button onClick={() => navigate(`/history/${patientId}`, { state: { openForm: true } })}
-                                    className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl text-sm mb-5 hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 focus-ring transition-all flex items-center justify-center gap-2 group">
+                                    className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl text-sm mb-3 hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 focus-ring transition-all flex items-center justify-center gap-2 group">
                                     <Plus className="w-5 h-5 group-hover:scale-125 transition-transform" /> Record Clinical Visit
+                                </button>
+
+                                <button onClick={() => setShowBookingModal(true)}
+                                    className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl text-sm mb-5 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 focus-ring transition-all flex items-center justify-center gap-2 group">
+                                    <Plus className="w-5 h-5 group-hover:scale-125 transition-transform" /> Schedule Appointment
                                 </button>
 
                                 <div className="space-y-2">
@@ -711,6 +718,14 @@ const ClinicalHub = () => {
                 message={confirmModal.message}
                 onConfirm={confirmModal.onConfirm}
                 onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+            />
+
+            {/* Appointment Booking Modal — pre-fills this patient */}
+            <BookingModal 
+                isOpen={showBookingModal}
+                onClose={() => setShowBookingModal(false)}
+                preselectedPatient={patient}
+                onSuccess={() => toast.success('Appointment booked for ' + patient?.full_name)}
             />
         </div>
     );
