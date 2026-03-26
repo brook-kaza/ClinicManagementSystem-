@@ -204,5 +204,32 @@ class PatientRead(PatientBase):
     sick_leaves: List[SickLeaveRead] = []
     referrals: List[ReferralRead] = []
     invoices: List[InvoiceRead] = []
+    appointments: List["AppointmentRead"] = []
 
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Appointment Schemas ---
+
+class AppointmentBase(BaseModel):
+    start_time: datetime
+    end_time: datetime
+    doctor_id: int
+    status: Optional[str] = "Scheduled"
+    notes: Optional[str] = None
+
+class AppointmentCreate(AppointmentBase):
+    patient_id: int
+
+class AppointmentUpdate(BaseModel):
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
+    doctor_id: Optional[int] = None
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+class AppointmentRead(AppointmentBase):
+    id: int
+    patient_id: int
+    created_at: datetime
+    
     model_config = ConfigDict(from_attributes=True)

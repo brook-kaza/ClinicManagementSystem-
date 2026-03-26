@@ -224,3 +224,38 @@ def create_payment(db: Session, payment: schemas.PaymentCreate, invoice_id: int,
         db.commit()
         
     return db_payment
+
+# --- Appointment CRUD ---
+
+def get_appointments(db: Session, start: datetime.datetime, end: datetime.datetime) -> List[models.Appointment]:
+    return db.query(models.Appointment).filter(
+        models.Appointment.start_time >= start,
+        models.Appointment.end_time <= end
+    ).all()
+
+def get_patient_appointments(db: Session, patient_id: int) -> List[models.Appointment]:
+    return db.query(models.Appointment).filter(models.Appointment.patient_id == patient_id).order_by(models.Appointment.start_time.desc()).all()
+
+def get_appointment(db: Session, appointment_id: int) -> Optional[models.Appointment]:
+    return db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+
+def create_appointment(db: Session, appointment: schemas.AppointmentCreate) -> models.Appointment:
+    db_appointment = models.Appointment(**appointment.model_dump())
+    db.add(db_appointment)
+    db.commit()
+    db.refresh(db_appointment)
+    return db_appointment
+
+def update_appointment(db: Session, db_appointment: models.Appointment, appointment_update: schemas.AppointmentUpdate) -> models.Appointment:
+    update_data = appointment_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_appointment, key, value)
+    db.commit()
+    db.refresh(db_appointment)
+    return db_appointment
+
+def delete_appointment(db: Session, appointment_id: int):
+    db_appointment = db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
+    if db_appointment:
+        db.delete(db_appointment)
+        db.commit()

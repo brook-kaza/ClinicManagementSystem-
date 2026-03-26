@@ -10,7 +10,7 @@ import os
 from datetime import datetime
 
 from database import engine, Base, SessionLocal
-from routers import patients, teeth, visits, auth, users, documents, dashboard, reports, billing
+from routers import patients, teeth, visits, auth, users, documents, dashboard, reports, billing, appointments
 import crud
 import schemas
 from auth import get_password_hash
@@ -121,6 +121,7 @@ api_router.include_router(documents.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(reports.router)
 api_router.include_router(billing.router)
+api_router.include_router(appointments.router)
 
 # --- Authenticated File Serving for X-Rays ---
 @api_router.get("/uploads/{filename}")

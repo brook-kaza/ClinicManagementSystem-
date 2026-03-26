@@ -56,6 +56,10 @@ class Patient(Base):
     invoices: Mapped[List["Invoice"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan"
     )
+    appointments: Mapped[List["Appointment"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
+
 
 class ToothStatus(Base):
     __tablename__ = "tooth_statuses"
@@ -155,3 +159,19 @@ class Payment(Base):
     recorded_by: Mapped[Optional[str]] = mapped_column(String(50))
 
     invoice: Mapped["Invoice"] = relationship("Invoice", back_populates="payments")
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    doctor_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    start_time: Mapped[datetime] = mapped_column(DateTime, index=True)
+    end_time: Mapped[datetime] = mapped_column(DateTime, index=True)
+    status: Mapped[str] = mapped_column(String(20), default="Scheduled") # Scheduled, Completed, Cancelled, No-show
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
+
+    patient: Mapped["Patient"] = relationship("Patient", back_populates="appointments")
+    doctor: Mapped["User"] = relationship("User")
+

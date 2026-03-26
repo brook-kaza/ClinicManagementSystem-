@@ -13,9 +13,9 @@ scp -o StrictHostKeyChecking=accept-new -i $HOME/.ssh/clinic_vps_deploy .env roo
 Write-Host "Triggering Docker Compose build and Alembic migration in the background..."
 $dockerScript = @"
 cd /opt/clinic-management-system
-docker-compose --profile all build --no-cache
-docker-compose --profile all up -d
-docker exec $(docker ps -aqf name=backend) alembic upgrade head
+docker compose --profile all build --no-cache
+docker compose --profile all up -d
+docker exec `$(docker ps -aqf name=backend) alembic upgrade head
 "@
 ssh -o StrictHostKeyChecking=accept-new -i $HOME/.ssh/clinic_vps_deploy root@$NEW_IP "nohup bash -c '$dockerScript' > /root/boot.log 2>&1 &"
 

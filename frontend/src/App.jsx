@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Users, Search, Activity, Clock, LogOut, Shield, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { Users, Search, Activity, Clock, LogOut, Shield, ChevronLeft, ChevronRight, FileText, Calendar } from 'lucide-react';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
@@ -14,6 +14,7 @@ import ClinicalHub from './pages/ClinicalHub';
 import PatientHistory from './pages/PatientHistory';
 import UserManagement from './pages/UserManagement';
 import Reports from './pages/Reports';
+import Appointments from './pages/Appointments';
 import AccessDenied from './components/AccessDenied';
 import { LayoutDashboard } from 'lucide-react';
 
@@ -97,6 +98,7 @@ const Layout = ({ children }) => {
           <SidebarLink to="/" icon={LayoutDashboard} isCollapsed={isCollapsed}>Dashboard</SidebarLink>
           <SidebarLink to="/search" icon={Search} isCollapsed={isCollapsed}>Clinical Queue <span className="ml-auto text-[9px] font-bold text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded border border-zinc-700 font-mono tracking-widest">⌘K</span></SidebarLink>
           <SidebarLink to="/register" icon={Users} isCollapsed={isCollapsed}>Patient Reg</SidebarLink>
+          <SidebarLink to="/appointments" icon={Calendar} isCollapsed={isCollapsed}>Appointments</SidebarLink>
 
           <div className={`mt-8 px-5 mb-2 ${isCollapsed ? 'text-center' : ''}`}>
             <span className={`text-[10px] font-bold text-zinc-600 uppercase tracking-widest ${isCollapsed ? 'hidden' : 'inline-block'}`}>Clinical Record</span>
@@ -200,6 +202,7 @@ const AuthenticatedApp = () => {
             <Route path="/" element={<Dashboard />} />
             <Route path="/register" element={<Registration />} />
             <Route path="/search" element={<SearchQueue />} />
+            <Route path="/appointments" element={<Appointments />} />
 
             {/* Clinical Routes */}
             <Route path="/hub/:patientId" element={<ClinicalHub />} />
