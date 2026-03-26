@@ -56,15 +56,19 @@ const Appointments = () => {
             const res = await api.get('/appointments', {
                 params: { start: start.toISOString(), end: end.toISOString() }
             });
-            const formatted = res.data.map(app => ({
-                id: app.id,
-                title: `Appt: ${app.patient_id}`, // In real app, join with patient name
-                start: app.start_time,
-                end: app.end_time,
-                extendedProps: { ...app },
-                backgroundColor: app.status === 'Cancelled' ? '#ef4444' : '#4f46e5',
-                borderColor: 'transparent'
-            }));
+            const formatted = res.data.map(app => {
+                const patientName = app.patient?.full_name || `Patient #${app.patient_id}`;
+                const drName = app.doctor?.full_name || app.doctor?.username || `Dr. ${app.doctor_id}`;
+                return {
+                    id: app.id,
+                    title: `${patientName} (${drName})`,
+                    start: app.start_time,
+                    end: app.end_time,
+                    extendedProps: { ...app, patientName, drName },
+                    backgroundColor: app.status === 'Cancelled' ? '#ef4444' : '#4f46e5',
+                    borderColor: 'transparent'
+                };
+            });
             setEvents(formatted);
         } catch (err) {
             toast.error("Failed to load appointments.");
@@ -188,9 +192,31 @@ const Appointments = () => {
                     allDaySlot={false}
                     datesSet={(dateInfo) => fetchAppointments(dateInfo.start, dateInfo.end)}
                     eventClick={(info) => {
-                        toast(`Appointment: ${info.event.title}`, { icon: '📅' });
+                        const { patientName, drName, status, notes } = info.event.extendedProps;
+                        toast.custom((t) => (
+                            <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black/5 p-4 border border-zinc-100`}>
+                                <div className="flex-1 w-0">
+                                    <div className="flex items-start">
+                                        <div className="flex-shrink-0 pt-0.5">
+                                            <CalendarIcon className="h-10 w-10 text-indigo-500 bg-indigo-50 p-2 rounded-full" />
+                                        </div>
+                                        <div className="ml-4 flex-1">
+                                            <p className="text-sm font-bold text-zinc-900">{patientName}</p>
+                                            <p className="mt-1 text-xs text-zinc-500">With {drName} • Status: <span className="font-bold">{status}</span></p>
+                                            {notes && <p className="mt-2 text-xs text-zinc-600 bg-zinc-50 p-2 rounded-lg italic border border-zinc-100">"{notes}"</p>}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex border-l border-zinc-100 pl-4 ml-4">
+                                    <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-lg flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none">
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        ), { duration: 5000 });
                     }}
                     eventClassNames="rounded-lg border-none shadow-sm font-semibold text-xs cursor-pointer p-1"
+
                 />
             </div>
 

@@ -232,4 +232,29 @@ class AppointmentRead(AppointmentBase):
     patient_id: int
     created_at: datetime
     
+class AppointmentPatientInfo(BaseModel):
+    id: int
+    full_name: str
+    card_number: str
+    phone: Optional[str] = None
+    
     model_config = ConfigDict(from_attributes=True)
+
+class AppointmentDoctorInfo(BaseModel):
+    id: int
+    username: str
+    role: str
+    full_name: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class AppointmentRead(AppointmentBase):
+    id: int
+    patient_id: int
+    created_at: datetime
+    
+    patient: Optional[AppointmentPatientInfo] = None
+    doctor: Optional[AppointmentDoctorInfo] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+

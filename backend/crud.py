@@ -227,14 +227,22 @@ def create_payment(db: Session, payment: schemas.PaymentCreate, invoice_id: int,
 
 # --- Appointment CRUD ---
 
+from sqlalchemy.orm import Session, joinedload
+# ...
+
 def get_appointments(db: Session, start: datetime.datetime, end: datetime.datetime) -> List[models.Appointment]:
-    return db.query(models.Appointment).filter(
+    return db.query(models.Appointment).options(
+        joinedload(models.Appointment.patient),
+        joinedload(models.Appointment.doctor)
+    ).filter(
         models.Appointment.start_time >= start,
         models.Appointment.end_time <= end
     ).all()
 
 def get_patient_appointments(db: Session, patient_id: int) -> List[models.Appointment]:
-    return db.query(models.Appointment).filter(models.Appointment.patient_id == patient_id).order_by(models.Appointment.start_time.desc()).all()
+    return db.query(models.Appointment).options(
+        joinedload(models.Appointment.doctor)
+    ).filter(models.Appointment.patient_id == patient_id).order_by(models.Appointment.start_time.desc()).all()
 
 def get_appointment(db: Session, appointment_id: int) -> Optional[models.Appointment]:
     return db.query(models.Appointment).filter(models.Appointment.id == appointment_id).first()
