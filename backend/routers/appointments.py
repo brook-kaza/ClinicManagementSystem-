@@ -116,12 +116,14 @@ def delete_appointment(
 def get_available_slots(
     date: datetime = Query(...),
     doctor_id: int = Query(...),
+    exclude_appointment_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
     """
     Returns available 30-minute slots for a given doctor on a given day.
     Assumes office hours are 9:00 AM to 5:00 PM (09:00 to 17:00).
+    When editing an appointment, pass exclude_appointment_id to keep its slot available.
     """
     # Define business hours
     START_HOUR = 9
@@ -136,13 +138,16 @@ def get_available_slots(
     if day_end <= now:
         return {"date": date.date(), "doctor_id": doctor_id, "available_slots": []}
     
-    # Fetch existing appointments for this doctor today
-    appointments = db.query(models.Appointment).filter(
+    # Fetch existing appointments for this doctor today, excluding the one being edited
+    query = db.query(models.Appointment).filter(
         models.Appointment.doctor_id == doctor_id,
         models.Appointment.status != "Cancelled",
         models.Appointment.start_time >= day_start,
         models.Appointment.start_time < day_end
-    ).all()
+    )
+    if exclude_appointment_id:
+        query = query.filter(models.Appointment.id != exclude_appointment_id)
+    appointments = query.all()
     
     slots = []
     current_slot = day_start

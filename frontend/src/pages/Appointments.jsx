@@ -3,7 +3,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { Calendar as CalendarIcon, Plus, X, User, Clock, CheckCircle, Search, ChevronRight, AlertCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, X, User, Clock, CheckCircle, Search, ChevronRight, AlertCircle, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import ConfirmModal from '../components/ConfirmModal';
@@ -15,7 +15,12 @@ const Appointments = () => {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showBookingModal, setShowBookingModal] = useState(false);
+    const [editingAppointment, setEditingAppointment] = useState(null);
     const [selectedSlot, setSelectedSlot] = useState(null);
+
+    // Delete confirmation
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletingAppointmentId, setDeletingAppointmentId] = useState(null);
 
     const calendarRef = useRef(null);
 
@@ -24,8 +29,6 @@ const Appointments = () => {
     }, []);
 
     const fetchAppointments = async (start, end) => {
-        // FullCalendar provides start/end in the datesSet callback
-        // If not provided (initial mount), we'll let FullCalendar trigger it
         if (!start || !end) return;
 
         setLoading(true);
@@ -55,10 +58,48 @@ const Appointments = () => {
     };
 
     const handleDateSelect = (selectInfo) => {
-        // We will pass this default date context to the booking modal in future iterations if preferred, 
-        // but for now, quick-booking is standard
         setSelectedSlot(selectInfo);
+        setEditingAppointment(null);
         setShowBookingModal(true);
+    };
+
+    const handleEventClick = (info) => {
+        const appt = info.event.extendedProps;
+        // Open the booking modal in edit mode with full appointment data
+        setEditingAppointment({
+            id: appt.id,
+            patient_id: appt.patient_id,
+            doctor_id: appt.doctor_id,
+            start_time: appt.start_time,
+            end_time: appt.end_time,
+            notes: appt.notes,
+            status: appt.status,
+            patientName: appt.patientName,
+            drName: appt.drName,
+            patient: appt.patient
+        });
+        setShowBookingModal(true);
+    };
+
+    const handleDeleteAppointment = async () => {
+        if (!deletingAppointmentId) return;
+        try {
+            await api.delete(`/appointments/${deletingAppointmentId}`);
+            toast.success("Appointment deleted.");
+            refreshCalendar();
+        } catch (err) {
+            toast.error("Failed to delete appointment.");
+        } finally {
+            setShowDeleteConfirm(false);
+            setDeletingAppointmentId(null);
+        }
+    };
+
+    const refreshCalendar = () => {
+        if (calendarRef.current) {
+            const calendarApi = calendarRef.current.getApi();
+            fetchAppointments(calendarApi.view.activeStart, calendarApi.view.activeEnd);
+        }
     };
 
     return (
@@ -71,7 +112,7 @@ const Appointments = () => {
                     <p className="text-zinc-500 font-medium">Manage clinical schedule and patient bookings efficiently.</p>
                 </div>
                 <button 
-                    onClick={() => setShowBookingModal(true)}
+                    onClick={() => { setEditingAppointment(null); setShowBookingModal(true); }}
                     className="flex items-center justify-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all focus-ring"
                 >
                     <Plus className="w-5 h-5" /> Quick Booking
@@ -96,45 +137,26 @@ const Appointments = () => {
                     slotMaxTime="19:00:00"
                     allDaySlot={false}
                     datesSet={(dateInfo) => fetchAppointments(dateInfo.start, dateInfo.end)}
-                    eventClick={(info) => {
-                        const { patientName, drName, status, notes } = info.event.extendedProps;
-                        toast.custom((t) => (
-                            <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-black/5 p-4 border border-zinc-100`}>
-                                <div className="flex-1 w-0">
-                                    <div className="flex items-start">
-                                        <div className="flex-shrink-0 pt-0.5">
-                                            <CalendarIcon className="h-10 w-10 text-indigo-500 bg-indigo-50 p-2 rounded-full" />
-                                        </div>
-                                        <div className="ml-4 flex-1">
-                                            <p className="text-sm font-bold text-zinc-900">{patientName}</p>
-                                            <p className="mt-1 text-xs text-zinc-500">With {drName} • Status: <span className="font-bold">{status}</span></p>
-                                            {notes && <p className="mt-2 text-xs text-zinc-600 bg-zinc-50 p-2 rounded-lg italic border border-zinc-100">"{notes}"</p>}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex border-l border-zinc-100 pl-4 ml-4">
-                                    <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-lg flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none">
-                                        Close
-                                    </button>
-                                </div>
-                            </div>
-                        ), { duration: 5000 });
-                    }}
+                    eventClick={handleEventClick}
                     eventClassNames="rounded-lg border-none shadow-sm font-semibold text-xs cursor-pointer p-1"
-
                 />
             </div>
 
-            {/* Standalone Booking Modal Injection */}
+            {/* Booking / Edit Modal */}
             <BookingModal 
                 isOpen={showBookingModal}
-                onClose={() => setShowBookingModal(false)}
-                onSuccess={() => {
-                    if (calendarRef.current) {
-                        const calendarApi = calendarRef.current.getApi();
-                        fetchAppointments(calendarApi.view.activeStart, calendarApi.view.activeEnd);
-                    }
-                }}
+                onClose={() => { setShowBookingModal(false); setEditingAppointment(null); }}
+                onSuccess={refreshCalendar}
+                editingAppointment={editingAppointment}
+            />
+
+            {/* Delete Confirmation */}
+            <ConfirmModal
+                isOpen={showDeleteConfirm}
+                onClose={() => { setShowDeleteConfirm(false); setDeletingAppointmentId(null); }}
+                onConfirm={handleDeleteAppointment}
+                title="Delete Appointment"
+                message="Are you sure you want to delete this appointment? This action cannot be undone."
             />
         </div>
     );
