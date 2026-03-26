@@ -19,12 +19,31 @@ const labelCls = "block text-[11px] font-bold text-zinc-500 uppercase tracking-w
 
 export const PrescriptionForm = ({ patientId, onComplete, onCancel }) => {
     const [loading, setLoading] = useState(false);
-    const [formData, setFormData] = useState({ medications: '', instructions: '' });
+    const [medications, setMedications] = useState([{ drug: '', dosage: '' }]);
+    const [instructions, setInstructions] = useState('');
+
+    const addRow = () => setMedications([...medications, { drug: '', dosage: '' }]);
+    const removeRow = (i) => setMedications(medications.filter((_, idx) => idx !== i));
+    const updateRow = (i, field, val) => {
+        const updated = [...medications];
+        updated[i][field] = val;
+        setMedications(updated);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault(); setLoading(true);
         try {
-            const res = await api.post(`/documents/patients/${patientId}/prescriptions`, formData);
+            // Serialize structured rows into the backend's expected "medications" string format
+            // Each line: "Drug Name / Strength / Form - Dose / Frequency / Duration"
+            const medsString = medications
+                .filter(m => m.drug.trim())
+                .map(m => m.dosage.trim() ? `${m.drug.trim()} - ${m.dosage.trim()}` : m.drug.trim())
+                .join('\n');
+
+            const res = await api.post(`/documents/patients/${patientId}/prescriptions`, {
+                medications: medsString,
+                instructions: instructions
+            });
             await openAuthenticatedPdf(`/documents/prescriptions/${res.data.id}/pdf`);
             onComplete();
             toast.success("Prescription generated successfully!");
@@ -35,14 +54,39 @@ export const PrescriptionForm = ({ patientId, onComplete, onCancel }) => {
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-                <label className={labelCls}>Medications (One per line)</label>
-                <textarea required className={`${inputCls} min-h-[160px] resize-y custom-scrollbar`} placeholder="e.g. Amoxicillin 500mg - 1 tab tid for 5 days"
-                    value={formData.medications} onChange={(e) => setFormData({ ...formData, medications: e.target.value })} />
+                <label className={labelCls}>Medications</label>
+                <div className="space-y-3">
+                    {medications.map((med, i) => (
+                        <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-3 items-start">
+                            <input
+                                required
+                                className={inputCls}
+                                placeholder="Drug Name / Strength / Form"
+                                value={med.drug}
+                                onChange={(e) => updateRow(i, 'drug', e.target.value)}
+                            />
+                            <input
+                                className={inputCls}
+                                placeholder="Dose / Frequency / Duration"
+                                value={med.dosage}
+                                onChange={(e) => updateRow(i, 'dosage', e.target.value)}
+                            />
+                            {medications.length > 1 && (
+                                <button type="button" onClick={() => removeRow(i)} className="mt-1 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors" title="Remove">
+                                    ✕
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+                <button type="button" onClick={addRow} className="mt-3 text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 px-3 py-2 rounded-xl hover:bg-indigo-50 transition-colors">
+                    + Add Medication
+                </button>
             </div>
             <div>
                 <label className={labelCls}>Special Instructions</label>
                 <input className={inputCls} placeholder="Take after meals..."
-                    value={formData.instructions} onChange={(e) => setFormData({ ...formData, instructions: e.target.value })} />
+                    value={instructions} onChange={(e) => setInstructions(e.target.value)} />
             </div>
             <div className="flex gap-4 pt-4 border-t border-zinc-100">
                 <button type="button" onClick={onCancel} className="flex-1 py-4 rounded-2xl font-bold text-zinc-500 hover:bg-zinc-100 transition-colors text-sm focus-ring">Cancel</button>

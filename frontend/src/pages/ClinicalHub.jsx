@@ -442,11 +442,14 @@ const ClinicalHub = () => {
                                 <span className="leading-relaxed">{patient.medical_alerts}</span>
                             </div>
                         )}
-                        {user?.role === 'Admin' && (
-                            <div className="flex bg-white border border-zinc-200 rounded-xl shadow-sm text-xs font-bold overflow-hidden">
+                        <div className="flex bg-white border border-zinc-200 rounded-xl shadow-sm text-xs font-bold overflow-hidden">
+                            <button onClick={() => setShowBookingModal(true)} className="px-5 py-2.5 text-emerald-600 hover:bg-emerald-50 transition-colors border-r border-zinc-200 flex items-center gap-1.5">
+                                <Plus className="w-3.5 h-3.5" /> Book Appointment
+                            </button>
+                            {user?.role === 'Admin' && (
                                 <button onClick={openEditPatient} className="px-5 py-2.5 text-zinc-600 hover:bg-zinc-50 transition-colors">Edit Profile</button>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
@@ -537,13 +540,8 @@ const ClinicalHub = () => {
 
                             <div className="relative z-10">
                                 <button onClick={() => navigate(`/history/${patientId}`, { state: { openForm: true } })}
-                                    className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl text-sm mb-3 hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 focus-ring transition-all flex items-center justify-center gap-2 group">
+                                    className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl text-sm mb-5 hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 focus-ring transition-all flex items-center justify-center gap-2 group">
                                     <Plus className="w-5 h-5 group-hover:scale-125 transition-transform" /> Record Clinical Visit
-                                </button>
-
-                                <button onClick={() => setShowBookingModal(true)}
-                                    className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl text-sm mb-5 hover:bg-emerald-700 shadow-lg shadow-emerald-600/30 focus-ring transition-all flex items-center justify-center gap-2 group">
-                                    <Plus className="w-5 h-5 group-hover:scale-125 transition-transform" /> Schedule Appointment
                                 </button>
 
                                 <div className="space-y-2">
