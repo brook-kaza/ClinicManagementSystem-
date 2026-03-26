@@ -34,12 +34,8 @@ services:
     volumes:
       - ./backend/uploads:/app/uploads
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    volumes:
-      - frontend_dist:/usr/share/nginx/html
+  # The dedicated frontend service was deleted because its named volume aggressively cached stale files.
+  # The proxy service now securely handles compiling and serving the frontend internally.
 
   n8n:
     image: n8nio/n8n:latest
@@ -66,19 +62,18 @@ services:
           memory: 1.5G
 
   proxy:
-    image: nginx:alpine
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     restart: always
     ports:
       - "80:80"
     volumes:
       - ./docker-nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - frontend_dist:/usr/share/nginx/html:ro
     depends_on:
       - clinic-backend
       - n8n
-      - frontend
 
 volumes:
   postgres_data:
   n8n_data:
-  frontend_dist:

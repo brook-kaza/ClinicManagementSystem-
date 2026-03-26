@@ -7,10 +7,10 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Stage 2: Expose the build to a generic volume (to be consumed by the proxy service)
-# We use a lightweight image just to store the files
-FROM alpine:latest
+# Stage 2: Serve via Nginx
+# Using a self-contained Nginx image ensures new builds overwrite old cached files natively
+FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# This stage doesn't run a server, it just provides a mount point
-CMD ["sh", "-c", "while true; do sleep 3600; done"]
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
