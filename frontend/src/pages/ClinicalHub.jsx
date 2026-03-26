@@ -328,16 +328,15 @@ const ClinicalHub = () => {
         const isSelected = selectedTooth === num;
         return (
             <button key={num} onClick={() => handleToothClick(num)}
-                className={`group flex flex-col items-center p-2 rounded-2xl transition-all duration-200 cursor-pointer focus-ring relative
-                    ${isSelected ? 'bg-indigo-50 border-2 border-indigo-400 shadow-lg shadow-indigo-500/20 scale-105' : 'border-2 border-transparent hover:border-zinc-200 hover:bg-zinc-50/80 hover:shadow-md'}
+                className={`group flex flex-col items-center justify-center p-1 sm:p-2 rounded-xl sm:rounded-2xl transition-all duration-200 cursor-pointer focus-ring relative w-full
+                    ${isSelected ? 'bg-indigo-50 border-2 border-indigo-400 shadow-lg shadow-indigo-500/20 scale-105 z-10' : 'border-2 border-transparent hover:border-zinc-200 hover:bg-zinc-50/80 hover:shadow-md'}
                 `}
-                style={{ width: '80px' }}
             >
-                <span className={`text-[11px] font-bold mb-1 ${config.text} transition-colors`}>{num}</span>
-                <div className="w-10 h-14 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                <span className={`text-[9px] sm:text-[11px] font-bold mb-0.5 sm:mb-1 ${config.text} transition-colors`}>{num}</span>
+                <div className="w-6 h-8 sm:w-10 sm:h-14 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
                     <ToothSVG type={getToothType(num)} isUpper={isUpper} condition={condition} />
                 </div>
-                <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mt-1">{TOOTH_SHORT_NAMES[num]}</span>
+                <span className="hidden sm:block text-[8px] sm:text-[9px] font-bold text-zinc-400 uppercase tracking-wider mt-1 scale-90 sm:scale-100">{TOOTH_SHORT_NAMES[num]}</span>
             </button>
         );
     };
@@ -485,17 +484,19 @@ const ClinicalHub = () => {
                         </div>
 
                         {/* Upper Maxilla */}
-                        <div className="relative mb-4">
-                            <div className="flex items-center gap-4 mb-5">
-                                <div className="flex-1 h-px bg-zinc-200"></div>
-                                <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] px-4">Upper Maxilla</span>
-                                <div className="flex-1 h-px bg-zinc-200"></div>
-                            </div>
-                            <div className="flex justify-center flex-wrap gap-1 mb-2">
-                                {upperRow1.map(num => renderToothCard(num, true))}
-                            </div>
-                            <div className="flex justify-center flex-wrap gap-1">
-                                {upperRow2.map(num => renderToothCard(num, true))}
+                        <div className="relative mb-4 overflow-x-auto pb-4 hide-scrollbar">
+                            <div className="min-w-[320px] sm:min-w-0">
+                                <div className="flex items-center gap-4 mb-5">
+                                    <div className="flex-1 h-px bg-zinc-200"></div>
+                                    <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] px-4">Upper Maxilla</span>
+                                    <div className="flex-1 h-px bg-zinc-200"></div>
+                                </div>
+                                <div className="grid grid-cols-8 gap-0.5 sm:gap-1 lg:gap-2 mb-2">
+                                    {upperRow1.map(num => renderToothCard(num, true))}
+                                </div>
+                                <div className="grid grid-cols-8 gap-0.5 sm:gap-1 lg:gap-2">
+                                    {upperRow2.map(num => renderToothCard(num, true))}
+                                </div>
                             </div>
                         </div>
 
@@ -503,17 +504,19 @@ const ClinicalHub = () => {
                         <div className="my-5 border-t-2 border-dashed border-zinc-200"></div>
 
                         {/* Lower Mandible */}
-                        <div className="relative">
-                            <div className="flex items-center gap-4 mb-5">
-                                <div className="flex-1 h-px bg-zinc-200"></div>
-                                <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] px-4">Lower Mandible</span>
-                                <div className="flex-1 h-px bg-zinc-200"></div>
-                            </div>
-                            <div className="flex justify-center flex-wrap gap-1 mb-2">
-                                {lowerRow1.map(num => renderToothCard(num, false))}
-                            </div>
-                            <div className="flex justify-center flex-wrap gap-1">
-                                {lowerRow2.map(num => renderToothCard(num, false))}
+                        <div className="relative overflow-x-auto pb-4 hide-scrollbar">
+                            <div className="min-w-[320px] sm:min-w-0">
+                                <div className="flex items-center gap-4 mb-5">
+                                    <div className="flex-1 h-px bg-zinc-200"></div>
+                                    <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-[0.2em] px-4">Lower Mandible</span>
+                                    <div className="flex-1 h-px bg-zinc-200"></div>
+                                </div>
+                                <div className="grid grid-cols-8 gap-0.5 sm:gap-1 lg:gap-2 mb-2">
+                                    {lowerRow1.map(num => renderToothCard(num, false))}
+                                </div>
+                                <div className="grid grid-cols-8 gap-0.5 sm:gap-1 lg:gap-2">
+                                    {lowerRow2.map(num => renderToothCard(num, false))}
+                                </div>
                             </div>
                         </div>
                     </div>

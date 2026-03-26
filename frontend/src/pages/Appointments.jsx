@@ -148,6 +148,12 @@ const Appointments = () => {
                 onClose={() => { setShowBookingModal(false); setEditingAppointment(null); }}
                 onSuccess={refreshCalendar}
                 editingAppointment={editingAppointment}
+                onDelete={(id) => {
+                    setShowBookingModal(false);
+                    setEditingAppointment(null);
+                    setDeletingAppointmentId(id);
+                    setShowDeleteConfirm(true);
+                }}
             />
 
             {/* Delete Confirmation */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Clock, CheckCircle, Search, ChevronRight, AlertCircle, Calendar as CalendarIcon, Edit3 } from 'lucide-react';
+import { X, User, Clock, CheckCircle, Search, ChevronRight, AlertCircle, Calendar as CalendarIcon, Edit3, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
@@ -8,7 +8,8 @@ const BookingModal = ({
     onClose, 
     onSuccess, 
     preselectedPatient = null,
-    editingAppointment = null // If provided, modal enters EDIT mode
+    editingAppointment = null, // If provided, modal enters EDIT mode
+    onDelete = null
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
@@ -164,12 +165,19 @@ const BookingModal = ({
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-sm animate-fade-in">
             <div className="bg-white rounded-[2rem] w-full max-w-2xl overflow-hidden shadow-2xl border border-zinc-200 animate-scale-in flex flex-col" style={{ maxHeight: 'calc(100vh - 2rem)' }}>
                 <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50 flex-shrink-0">
-                    <h3 className="text-lg font-bold text-zinc-900 font-heading flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-zinc-900 font-heading flex items-center gap-2 flex-1 relative pr-8">
                         {isEditMode ? <><Edit3 className="w-5 h-5 text-amber-500" /> Edit Appointment</> : 'New Appointment'}
                     </h3>
-                    <button onClick={() => { onClose(); resetForm(); }} className="p-2 hover:bg-zinc-200/50 rounded-xl transition-colors">
-                        <X className="w-5 h-5 text-zinc-400" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {isEditMode && onDelete && (
+                            <button type="button" onClick={() => onDelete(editingAppointment.id)} title="Delete Appointment" className="p-2 hover:bg-red-50 text-red-500 rounded-xl transition-colors">
+                                <Trash2 className="w-5 h-5" />
+                            </button>
+                        )}
+                        <button onClick={() => { onClose(); resetForm(); }} className="p-2 hover:bg-zinc-200/50 rounded-xl transition-colors">
+                            <X className="w-5 h-5 text-zinc-400" />
+                        </button>
+                    </div>
                 </div>
                 
                 <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4 overflow-y-auto flex-1">
