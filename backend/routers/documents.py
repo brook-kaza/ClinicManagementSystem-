@@ -96,7 +96,7 @@ _CSS = """
         padding-bottom: 5px;
         margin-bottom: 10px;
     }
-    . clinic-name {
+    .clinic-name {
         font-size: 18pt; /* Reduced from 22pt */
         font-weight: bold;
         color: #111827;
@@ -138,7 +138,8 @@ _CSS = """
     }
     .lbl {
         font-size: 7.5pt;
-        color: #6b7280;
+        color: #1f2937;
+        font-weight: bold;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 3px;

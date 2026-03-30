@@ -7,8 +7,11 @@ import schemas
 import models
 from database import get_db
 from auth import get_current_active_user, RoleChecker
-from datetime import datetime, date as date_type
+from datetime import datetime, date as date_type, timedelta
 from collections import defaultdict
+
+# Ethiopian time offset (UTC+3)
+EAT_OFFSET = timedelta(hours=3)
 
 router = APIRouter(
     prefix="/reports",
@@ -125,7 +128,7 @@ def get_daily_income_report(
         grand_total += p.amount_paid
         transactions.append({
             "payment_id": p.id,
-            "time": p.payment_date.strftime("%H:%M"),
+            "time": (p.payment_date + EAT_OFFSET).strftime("%I:%M %p"),
             "patient_name": p.invoice.patient.full_name if p.invoice and p.invoice.patient else "Unknown",
             "card_number": p.invoice.patient.card_number if p.invoice and p.invoice.patient else "-",
             "description": p.invoice.description if p.invoice else "-",

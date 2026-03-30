@@ -217,8 +217,41 @@ def get_patient_invoices(db: Session, patient_id: int) -> List[models.Invoice]:
     return db.query(models.Invoice).filter(models.Invoice.patient_id == patient_id).order_by(models.Invoice.created_at.desc()).all()
 
 def create_invoice(db: Session, invoice: schemas.InvoiceCreate, patient_id: int) -> models.Invoice:
-    db_invoice = models.Invoice(**invoice.model_dump(), patient_id=patient_id)
+    invoice_data = invoice.model_dump(exclude={"items"})
+    
+    # If items are provided, auto-calculate total and description
+    items_data = invoice.items or []
+    if items_data:
+        calculated_total = 0.0
+        for item in items_data:
+            line_total = item.quantity * item.unit_price
+            calculated_total += line_total
+        invoice_data["total_amount"] = calculated_total
+        # Auto-build description from item names
+        invoice_data["description"] = ", ".join(item.description for item in items_data)
+    
+    # Ensure total_amount is set (fallback for old-style single-description invoices)
+    if not invoice_data.get("total_amount"):
+        invoice_data["total_amount"] = 0.0
+    if not invoice_data.get("description"):
+        invoice_data["description"] = "General Treatment"
+    
+    db_invoice = models.Invoice(**invoice_data, patient_id=patient_id)
     db.add(db_invoice)
+    db.flush()  # Get the invoice ID before adding items
+    
+    # Create line items
+    for item in items_data:
+        line_total = item.quantity * item.unit_price
+        db_item = models.InvoiceItem(
+            invoice_id=db_invoice.id,
+            description=item.description,
+            quantity=item.quantity,
+            unit_price=item.unit_price,
+            line_total=line_total
+        )
+        db.add(db_item)
+    
     db.commit()
     db.refresh(db_invoice)
     return db_invoice

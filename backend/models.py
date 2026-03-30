@@ -148,6 +148,19 @@ class Invoice(Base):
     
     patient: Mapped["Patient"] = relationship("Patient", back_populates="invoices")
     payments: Mapped[List["Payment"]] = relationship("Payment", back_populates="invoice", cascade="all, delete-orphan")
+    items: Mapped[List["InvoiceItem"]] = relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
+
+class InvoiceItem(Base):
+    __tablename__ = "invoice_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"))
+    description: Mapped[str] = mapped_column(String(255))
+    quantity: Mapped[int] = mapped_column(default=1)
+    unit_price: Mapped[float] = mapped_column()
+    line_total: Mapped[float] = mapped_column()
+
+    invoice: Mapped["Invoice"] = relationship("Invoice", back_populates="items")
 
 class Payment(Base):
     __tablename__ = "payments"

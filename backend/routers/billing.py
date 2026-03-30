@@ -144,7 +144,11 @@ def generate_payment_receipt(
     current_user: models.User = Depends(get_current_active_user)
 ):
     """Generate a PDF Cash Sales Attachment receipt for a specific payment, matching the official clinic layout."""
-    payment = db.query(models.Payment).filter(models.Payment.id == payment_id).first()
+    from sqlalchemy.orm import joinedload as jl
+    payment = db.query(models.Payment).options(
+        jl(models.Payment.invoice).joinedload(models.Invoice.items),
+        jl(models.Payment.invoice).joinedload(models.Invoice.patient)
+    ).filter(models.Payment.id == payment_id).first()
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
         
@@ -198,7 +202,9 @@ def generate_payment_receipt(
     t_left.drawOn(p, 40, y_blocks - 60)
 
     # Right Block (Meta Info)
-    date_str = payment.payment_date.strftime("%d/%m/%Y")
+    from datetime import timedelta as td
+    eat_date = payment.payment_date + td(hours=3)
+    date_str = eat_date.strftime("%d/%m/%Y")
     right_data = [
         ["Date", date_str],
         ["Reference", str(payment.id).zfill(6)],
@@ -216,14 +222,35 @@ def generate_payment_receipt(
     t_right.wrapOn(p, width, height)
     t_right.drawOn(p, width - 240, y_blocks - 60)
 
-    # 4. Service Breakdown Grid
+    # 4. Service Breakdown Grid — use line items if available
     y_grid = y_blocks - 130
     grid_data = [
         ["ID", "Description", "Unit", "Qty", "Unit Price", "Line Total"],
-        ["1.", invoice.description.upper(), "Service", "1", str(int(payment.amount_paid)), str(int(payment.amount_paid))],
-        ["2.", "", "", "", "", ""]
     ]
     
+    if invoice.items and len(invoice.items) > 0:
+        # Multi-treatment invoice with line items
+        for idx, item in enumerate(invoice.items, 1):
+            grid_data.append([
+                f"{idx}.",
+                item.description.upper(),
+                "Service",
+                str(item.quantity),
+                str(int(item.unit_price)),
+                str(int(item.line_total))
+            ])
+    else:
+        # Legacy single-description invoice (backward compat)
+        grid_data.append([
+            "1.",
+            invoice.description.upper(),
+            "Service",
+            "1",
+            str(int(invoice.total_amount)),
+            str(int(invoice.total_amount))
+        ])
+    
+    # Calculate column widths to fit nicely
     t_grid = Table(grid_data, colWidths=[30, 200, 60, 40, 80, 80], rowHeights=20)
     t_grid.setStyle(TableStyle([
         ('GRID', (0,0), (-1,-1), 1, colors.black),
@@ -235,10 +262,12 @@ def generate_payment_receipt(
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE')
     ]))
     t_grid.wrapOn(p, width, height)
-    t_grid.drawOn(p, 40, y_grid)
+    # Adjust y_grid down if we have many items
+    grid_height = len(grid_data) * 20
+    t_grid.drawOn(p, 40, y_grid - grid_height + 20)
 
     # 5. Financial Summary & Footer
-    y_footer = y_grid - 60
+    y_footer = y_grid - grid_height - 40
     
     p.setFont("Helvetica-Bold", 10)
     p.drawString(40, y_footer, "Payment Method:")
@@ -258,9 +287,10 @@ def generate_payment_receipt(
 
     # Right Side Totals Box
     totals_data = [
-        ["Subtotal", str(int(payment.amount_paid))],
+        ["Subtotal", str(int(invoice.total_amount))],
         ["VAT", "-"],
-        ["Grand Total", str(int(payment.amount_paid))]
+        ["Grand Total", str(int(invoice.total_amount))],
+        ["Amount Paid", str(int(payment.amount_paid))]
     ]
     t_totals = Table(totals_data, colWidths=[100, 100], rowHeights=20)
     t_totals.setStyle(TableStyle([
@@ -270,21 +300,21 @@ def generate_payment_receipt(
         ('BACKGROUND', (0,0), (0,-1), colors.whitesmoke)
     ]))
     t_totals.wrapOn(p, width, height)
-    t_totals.drawOn(p, width - 240, y_footer - 40)
+    t_totals.drawOn(p, width - 240, y_footer - 60)
 
     # Signature
     p.setFont("Helvetica", 9)
     prepared_name = current_user.full_name or current_user.username.capitalize()
     p.drawString(40, 50, f"Prepared by: {prepared_name}")
 
-    # Watermark overlay (Optional, similar to screenshot)
+    # Watermark overlay
     p.saveState()
     try:
-        p.setFillAlpha(0.25)   # Transparent overlay
+        p.setFillAlpha(0.25)
     except Exception:
         pass
     p.setFont("Helvetica-Bold", 110)
-    p.setFillGray(0.5)         # Darker base color so it's readable but transparent
+    p.setFillGray(0.5)
     p.translate(width/2, height/2 - 20)
     p.rotate(45)
     p.drawCentredString(0, 0, "Attachment")

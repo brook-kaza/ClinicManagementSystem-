@@ -147,12 +147,30 @@ class PaymentRead(PaymentBase):
     recorded_by: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
-class InvoiceBase(BaseModel):
+# --- Invoice Item Schemas ---
+
+class InvoiceItemBase(BaseModel):
     description: str = Field(min_length=1, max_length=255)
-    total_amount: float = Field(ge=0)
+    quantity: int = Field(default=1, ge=1)
+    unit_price: float = Field(ge=0)
+
+class InvoiceItemCreate(InvoiceItemBase):
+    pass
+
+class InvoiceItemRead(InvoiceItemBase):
+    id: int
+    invoice_id: int
+    line_total: float
+    model_config = ConfigDict(from_attributes=True)
+
+# --- Invoice Schemas ---
+
+class InvoiceBase(BaseModel):
+    description: Optional[str] = Field(default="", max_length=255)
+    total_amount: Optional[float] = Field(default=None, ge=0)
 
 class InvoiceCreate(InvoiceBase):
-    pass
+    items: Optional[List[InvoiceItemCreate]] = None
 
 class InvoiceRead(InvoiceBase):
     id: int
@@ -160,6 +178,7 @@ class InvoiceRead(InvoiceBase):
     created_at: datetime
     status: str
     payments: List[PaymentRead] = []
+    items: List[InvoiceItemRead] = []
     model_config = ConfigDict(from_attributes=True)
 
 # --- Patient Schemas ---
