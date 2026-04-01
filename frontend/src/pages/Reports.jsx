@@ -142,6 +142,11 @@ const Reports = () => {
             exportToExcel(formatted, ["Time", "Patient", "Card Number", "Description", "Method", "Recorded By", "Amount (ETB)"], `Daily_Income_${dailyData.date}`);
         };
 
+        const totalCash = dailyData.by_method["Cash"] || 0;
+        const totalTransfer = Object.entries(dailyData.by_method)
+            .filter(([method]) => method !== "Cash")
+            .reduce((sum, [, amount]) => sum + amount, 0);
+
         return (
             <div className="space-y-6 animate-fade-in">
                 {/* Metrics */}
@@ -152,11 +157,11 @@ const Reports = () => {
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
                         <p className="text-zinc-500 font-bold text-[11px] uppercase tracking-wider mb-2">Cash Payments</p>
-                        <h4 className="text-3xl font-extrabold text-zinc-800">{(dailyData.by_method["Cash"] || 0).toLocaleString()}</h4>
+                        <h4 className="text-3xl font-extrabold text-zinc-800">{totalCash.toLocaleString()}</h4>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
-                        <p className="text-zinc-500 font-bold text-[11px] uppercase tracking-wider mb-2">Transfer Payments</p>
-                        <h4 className="text-3xl font-extrabold text-zinc-800">{(dailyData.by_method["Transfer"] || 0).toLocaleString()}</h4>
+                        <p className="text-zinc-500 font-bold text-[11px] uppercase tracking-wider mb-2">Transfer / Other</p>
+                        <h4 className="text-3xl font-extrabold text-zinc-800">{totalTransfer.toLocaleString()}</h4>
                     </div>
                 </div>
 
