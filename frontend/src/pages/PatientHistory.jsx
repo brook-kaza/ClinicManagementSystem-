@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, Plus, X, ListFilter, ClipboardCheck, ArrowLeft, Pill, Thermometer, CheckSquare, Activity, User, ActivitySquare, CircleCheck as CheckCircle, FileText, ExternalLink } from 'lucide-react';
+import { Clock, Plus, X, ListFilter, ClipboardCheck, ArrowLeft, Pill, Thermometer, CheckSquare, Activity, User, ActivitySquare, CircleCheck as CheckCircle, FileText, ExternalLink, Trash2, Images } from 'lucide-react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import api, { API_BASE_URL, SERVER_BASE_URL } from '../services/api';
 import toast from 'react-hot-toast';
@@ -23,7 +23,7 @@ const PatientHistory = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editingVisitId, setEditingVisitId] = useState(null);
     const [newVisit, setNewVisit] = useState({ chief_complaint: '', doctors_notes: '', primary_diagnosis: '', blood_pressure: '', heart_rate: '', respiratory_rate: '', temperature: '', visit_consent: false });
-    const [xrayFile, setXrayFile] = useState(null);
+    const [xrayFiles, setXrayFiles] = useState([]);
     const [uploadingXray, setUploadingXray] = useState(false);
     const formRef = useRef(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
@@ -92,16 +92,18 @@ const PatientHistory = () => {
 
             let addedVisit = response.data;
 
-            // Handle X-ray upload separately
+            // Handle X-ray upload separately (multiple files)
             let xrayUploadFailed = false;
             let xrayErrorMsg = "";
-            if (xrayFile) {
+            if (xrayFiles.length > 0) {
                 setUploadingXray(true);
                 const formData = new FormData();
-                formData.append('file', xrayFile);
+                xrayFiles.forEach(f => formData.append('files', f));
                 try {
-                    const uploadRes = await api.post(`/patients/${patientId}/visits/${addedVisit.id}/xray`, formData);
-                    addedVisit = { ...addedVisit, xray_url: uploadRes.data.url };
+                    await api.post(`/patients/${patientId}/visits/${addedVisit.id}/xray`, formData);
+                    // Re-fetch visit to get the xray_images list
+                    const refreshed = await api.get(`/patients/${patientId}/visits/${addedVisit.id}`);
+                    addedVisit = refreshed.data;
                 } catch (uploadErr) {
                     console.error(uploadErr);
                     xrayUploadFailed = true;
@@ -126,7 +128,7 @@ const PatientHistory = () => {
             }
 
             setNewVisit({ chief_complaint: '', doctors_notes: '', primary_diagnosis: '', blood_pressure: '', heart_rate: '', respiratory_rate: '', temperature: '', visit_consent: false });
-            setXrayFile(null);
+            setXrayFiles([]);
             setShowAddVisit(false);
             setIsEditing(false);
             setEditingVisitId(null);
@@ -304,10 +306,21 @@ const PatientHistory = () => {
                         </div>
 
                         <div>
-                            <label className={labelCls}>Upload Diagnostic Imaging (X-Ray / Scan)</label>
-                            <div className="flex items-center gap-4">
-                                <input type="file" accept="image/*" onChange={(e) => setXrayFile(e.target.files[0])} className="text-sm file:mr-5 file:py-3.5 file:px-6 file:rounded-xl file:border file:border-zinc-200 file:bg-white file:text-zinc-700 file:font-bold file:cursor-pointer hover:file:bg-zinc-50 hover:file:text-zinc-900 transition-colors file:shadow-sm" />
-                                {xrayFile && <span className="text-sm font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Attached</span>}
+                            <label className={labelCls}>Upload Diagnostic Imaging (X-Ray / Scan) — Multiple Files Supported</label>
+                            <div className="flex flex-col gap-3">
+                                <input type="file" accept="image/*" multiple onChange={(e) => setXrayFiles(Array.from(e.target.files))} className="text-sm file:mr-5 file:py-3.5 file:px-6 file:rounded-xl file:border file:border-zinc-200 file:bg-white file:text-zinc-700 file:font-bold file:cursor-pointer hover:file:bg-zinc-50 hover:file:text-zinc-900 transition-colors file:shadow-sm" />
+                                {xrayFiles.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {xrayFiles.map((f, i) => (
+                                            <span key={i} className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 flex items-center gap-1.5">
+                                                <CheckCircle className="w-3.5 h-3.5" /> {f.name}
+                                                <button type="button" onClick={() => setXrayFiles(prev => prev.filter((_, idx) => idx !== i))} className="ml-1 text-red-400 hover:text-red-600 transition-colors">
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -429,31 +442,64 @@ const PatientHistory = () => {
                                             </div>
                                         )}
 
-                                        {/* X-RAY IMAGING */}
-                                        {visit.xray_url && (
-                                            <div className="mt-2">
-                                                <span className="flex items-center gap-2 text-[10px] font-extrabold text-blue-500 uppercase tracking-[0.18em] mb-3">
-                                                    <Activity className="w-3.5 h-3.5 text-blue-400" />
-                                                    Imaging (X-Ray)
-                                                </span>
-                                                <div
-                                                    className="rounded-2xl overflow-hidden border border-zinc-200 shadow-sm cursor-zoom-in group/img"
-                                                    style={{ maxWidth: '480px' }}
-                                                >
-                                                    <div className="overflow-hidden" style={{ height: '220px', background: '#0a0a0a' }}>
-                                                        <AuthenticatedImage
-                                                            src={visit.xray_url}
-                                                            alt="Dental Radiograph"
-                                                            className="w-full h-full object-cover grayscale group-hover/img:grayscale-0 group-hover/img:scale-105 transition-all duration-500"
-                                                        />
-                                                    </div>
-                                                    <div className="px-4 py-2 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between">
-                                                        <span className="text-[10px] text-zinc-400 font-medium italic">Panoramic Radiograph — Click to view full size</span>
-                                                        <ExternalLink className="w-3.5 h-3.5 text-zinc-300" />
+                                        {/* X-RAY IMAGING GALLERY */}
+                                        {(() => {
+                                            // Combine legacy xray_url with new xray_images, avoiding duplicates
+                                            const galleryImages = [...(visit.xray_images || [])];
+                                            const galleryUrls = new Set(galleryImages.map(img => img.image_url));
+                                            // Add legacy xray_url only if it's not already in the gallery
+                                            if (visit.xray_url && !galleryUrls.has(visit.xray_url)) {
+                                                galleryImages.unshift({ id: null, image_url: visit.xray_url, label: 'Legacy X-Ray', uploaded_at: visit.visit_date });
+                                            }
+                                            if (galleryImages.length === 0) return null;
+                                            return (
+                                                <div className="mt-2">
+                                                    <span className="flex items-center gap-2 text-[10px] font-extrabold text-blue-500 uppercase tracking-[0.18em] mb-3">
+                                                        <Images className="w-3.5 h-3.5 text-blue-400" />
+                                                        Diagnostic Imaging ({galleryImages.length} {galleryImages.length === 1 ? 'image' : 'images'})
+                                                    </span>
+                                                    <div className={`grid gap-4 ${galleryImages.length === 1 ? 'grid-cols-1 max-w-[480px]' : galleryImages.length === 2 ? 'grid-cols-2 max-w-[720px]' : 'grid-cols-2 lg:grid-cols-3'}`}>
+                                                        {galleryImages.map((img, idx) => (
+                                                            <div key={img.id || `legacy-${idx}`} className="rounded-2xl overflow-hidden border border-zinc-200 shadow-sm group/img relative">
+                                                                <div className="overflow-hidden cursor-zoom-in" style={{ height: galleryImages.length === 1 ? '220px' : '160px', background: '#0a0a0a' }}>
+                                                                    <AuthenticatedImage
+                                                                        src={img.image_url}
+                                                                        alt={img.label || `X-Ray ${idx + 1}`}
+                                                                        className="w-full h-full object-cover grayscale group-hover/img:grayscale-0 group-hover/img:scale-105 transition-all duration-500"
+                                                                    />
+                                                                </div>
+                                                                <div className="px-3 py-2 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between">
+                                                                    <span className="text-[10px] text-zinc-400 font-medium italic truncate max-w-[150px]">{img.label || `Radiograph ${idx + 1}`}</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        {img.id && (user?.role === 'Admin' || user?.role === 'Dentist') && (
+                                                                            <button
+                                                                                onClick={async (e) => {
+                                                                                    e.stopPropagation();
+                                                                                    if (!window.confirm('Delete this X-ray image?')) return;
+                                                                                    try {
+                                                                                        await api.delete(`/patients/${patientId}/visits/${visit.id}/xray/${img.id}`);
+                                                                                        toast.success('X-ray image deleted.');
+                                                                                        // Refresh visits to update the gallery
+                                                                                        fetchHistory();
+                                                                                    } catch (err) {
+                                                                                        toast.error('Failed to delete X-ray.');
+                                                                                    }
+                                                                                }}
+                                                                                className="text-zinc-300 hover:text-red-500 transition-colors p-1"
+                                                                                title="Delete this X-ray"
+                                                                            >
+                                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                            </button>
+                                                                        )}
+                                                                        <ExternalLink className="w-3.5 h-3.5 text-zinc-300" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
+                                            );
+                                        })()}
 
                                         {/* Documents Row */}
                                         <div className="mt-3 flex flex-wrap gap-3">

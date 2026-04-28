@@ -78,9 +78,21 @@ class VisitUpdate(BaseModel):
     visit_consent: Optional[bool] = None
     visit_consent_time: Optional[datetime] = None
 
+# --- XrayImage Schemas ---
+
+class XrayImageRead(BaseModel):
+    id: int
+    visit_id: int
+    image_url: str
+    label: Optional[str] = None
+    uploaded_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
 class VisitRead(VisitBase):
     id: int
     patient_id: int
+    xray_images: List[XrayImageRead] = []
 
     model_config = ConfigDict(from_attributes=True)
 

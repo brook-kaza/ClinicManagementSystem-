@@ -88,7 +88,7 @@ class Visit(Base):
     respiratory_rate: Mapped[Optional[int]] = mapped_column()
     temperature: Mapped[Optional[float]] = mapped_column()
     
-    # X-Ray
+    # X-Ray (legacy single-image field — kept for backward compatibility)
     xray_url: Mapped[Optional[str]] = mapped_column(String(500))
     
     # Per-Visit Consent
@@ -96,6 +96,9 @@ class Visit(Base):
     visit_consent_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     patient: Mapped["Patient"] = relationship(back_populates="visits")
+    xray_images: Mapped[List["XrayImage"]] = relationship(
+        back_populates="visit", cascade="all, delete-orphan", order_by="XrayImage.uploaded_at"
+    )
 
 class Prescription(Base):
     __tablename__ = "prescriptions"
@@ -188,4 +191,15 @@ class Appointment(Base):
 
     patient: Mapped["Patient"] = relationship("Patient", back_populates="appointments")
     doctor: Mapped["User"] = relationship("User")
+
+class XrayImage(Base):
+    __tablename__ = "xray_images"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    visit_id: Mapped[int] = mapped_column(ForeignKey("visits.id"))
+    image_url: Mapped[str] = mapped_column(String(500))
+    label: Mapped[Optional[str]] = mapped_column(String(200), default=None)
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
+
+    visit: Mapped["Visit"] = relationship(back_populates="xray_images")
 
