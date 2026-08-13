@@ -413,30 +413,80 @@ def get_sick_leave_pdf(sick_leave_id: int, db: Session = Depends(get_db), curren
 
     patient = sl.patient
     local_issued = sl.date_issued
-    days = (sl.end_date - sl.start_date).days + 1
     patient_block = _build_patient_block(patient, "Sick Leave", f"SL-{sl.id}", local_issued)
 
-    cert_content = f"""
-        To whom it may concern,<br/><br/>
-        This is to certify that <b>{_esc(patient.full_name)}</b>
-        (Card No. <b>{_esc(patient.card_number)}</b>) is currently
-        under professional dental care at <b>{CLINIC_NAME_EN}</b>.<br/><br/>
-        Due to <b>{_esc(sl.diagnosis)}</b>, the patient is medically
-        advised to rest and recover from
-        <b>{sl.start_date.strftime('%d %B %Y')}</b> to
-        <b>{sl.end_date.strftime('%d %B %Y')}</b>,
-        inclusive of <b>{days}</b> day(s).
-    """
+    # Determine if this is a specific-dates or date-range sick leave
+    specific_dates_list = None
+    if sl.specific_dates:
+        import json
+        try:
+            specific_dates_list = json.loads(sl.specific_dates)
+        except (json.JSONDecodeError, TypeError):
+            specific_dates_list = None
+
+    if specific_dates_list and len(specific_dates_list) > 0:
+        # ── Specific Days Mode ──────────────────────────────
+        from datetime import datetime as dt
+        days = len(specific_dates_list)
+        formatted_dates = []
+        for d_str in specific_dates_list:
+            try:
+                d = dt.strptime(d_str, "%Y-%m-%d")
+                formatted_dates.append(f"<b>{d.strftime('%d %B %Y')}</b>")
+            except ValueError:
+                formatted_dates.append(f"<b>{_esc(d_str)}</b>")
+
+        if len(formatted_dates) == 1:
+            dates_text = formatted_dates[0]
+        elif len(formatted_dates) == 2:
+            dates_text = f"{formatted_dates[0]} and {formatted_dates[1]}"
+        else:
+            dates_text = ", ".join(formatted_dates[:-1]) + f", and {formatted_dates[-1]}"
+
+        cert_content = f"""
+            To whom it may concern,<br/><br/>
+            This is to certify that <b>{_esc(patient.full_name)}</b>
+            (Card No. <b>{_esc(patient.card_number)}</b>) is currently
+            under professional dental care at <b>{CLINIC_NAME_EN}</b>.<br/><br/>
+            Due to <b>{_esc(sl.diagnosis)}</b>, the patient is medically
+            advised to rest on the following date(s):
+            {dates_text},
+            totalling <b>{days}</b> day(s).
+        """
+
+        # Build a list of individual dates for the period section
+        dates_list_html = "<br/>".join(
+            f"&bull;&nbsp;&nbsp;{fd}" for fd in formatted_dates
+        )
+        period_content = f"""
+            {dates_list_html}
+            <br/><br/>
+            <b>{days}</b> day(s) total
+        """
+    else:
+        # ── Date Range Mode (original behavior) ────────────
+        days = (sl.end_date - sl.start_date).days + 1
+
+        cert_content = f"""
+            To whom it may concern,<br/><br/>
+            This is to certify that <b>{_esc(patient.full_name)}</b>
+            (Card No. <b>{_esc(patient.card_number)}</b>) is currently
+            under professional dental care at <b>{CLINIC_NAME_EN}</b>.<br/><br/>
+            Due to <b>{_esc(sl.diagnosis)}</b>, the patient is medically
+            advised to rest and recover from
+            <b>{sl.start_date.strftime('%d %B %Y')}</b> to
+            <b>{sl.end_date.strftime('%d %B %Y')}</b>,
+            inclusive of <b>{days}</b> day(s).
+        """
+
+        period_content = f"""
+            <b>{sl.start_date.strftime('%d %B %Y')}</b>
+            &nbsp;&mdash;&nbsp;
+            <b>{sl.end_date.strftime('%d %B %Y')}</b>
+            &nbsp;&nbsp;({days} day/s total)
+        """
     
     diag_content = _esc(sl.diagnosis)
-    
-    period_content = f"""
-        <b>{sl.start_date.strftime('%d %B %Y')}</b>
-        &nbsp;&mdash;&nbsp;
-        <b>{sl.end_date.strftime('%d %B %Y')}</b>
-        &nbsp;&nbsp;({days} day/s total)
-    """
-    
     rec_content = _esc(sl.recommendations or 'Bed rest, hydration, and adherence to prescribed medications.')
 
     body = (

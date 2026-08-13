@@ -117,6 +117,7 @@ class SickLeaveBase(BaseModel):
     end_date: datetime
     diagnosis: str = Field(min_length=1, max_length=500)
     recommendations: Optional[str] = Field(default=None, max_length=1000)
+    specific_dates: Optional[List[str]] = None  # List of "YYYY-MM-DD" strings for non-consecutive days
     visit_id: Optional[int] = None
 
 class SickLeaveCreate(SickLeaveBase):

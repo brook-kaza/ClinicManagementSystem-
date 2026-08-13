@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Printer } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Printer, X, Plus, Calendar, CalendarDays } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { DRUG_LIST, formatDrugDisplay, formatDrugForPrescription } from '../constants/drugs';
 
 const openAuthenticatedPdf = async (url) => {
     try {
@@ -16,6 +17,147 @@ const openAuthenticatedPdf = async (url) => {
 
 const inputCls = "w-full bg-white border border-zinc-200 rounded-2xl py-3.5 px-4 text-sm font-medium text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm hover:border-zinc-300";
 const labelCls = "block text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2.5 ml-1";
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Drug Autocomplete Input
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DrugAutocompleteInput = ({ value, onChange, placeholder, required }) => {
+    const [query, setQuery] = useState(value || '');
+    const [suggestions, setSuggestions] = useState([]);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const wrapperRef = useRef(null);
+    const inputRef = useRef(null);
+
+    // Sync external value changes
+    useEffect(() => {
+        setQuery(value || '');
+    }, [value]);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleInputChange = (e) => {
+        const val = e.target.value;
+        setQuery(val);
+        onChange(val);
+
+        if (val.trim().length >= 1) {
+            const lower = val.toLowerCase();
+            const filtered = DRUG_LIST.filter(drug => {
+                const display = formatDrugDisplay(drug).toLowerCase();
+                const name = drug.name.toLowerCase();
+                const category = drug.category.toLowerCase();
+                return name.includes(lower) || display.includes(lower) || category.includes(lower);
+            });
+            setSuggestions(filtered);
+            setShowDropdown(filtered.length > 0);
+            setHighlightedIndex(-1);
+        } else {
+            setSuggestions([]);
+            setShowDropdown(false);
+        }
+    };
+
+    const selectDrug = (drug) => {
+        const formatted = formatDrugForPrescription(drug);
+        setQuery(formatted);
+        onChange(formatted);
+        setShowDropdown(false);
+        setHighlightedIndex(-1);
+    };
+
+    const handleKeyDown = (e) => {
+        if (!showDropdown || suggestions.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setHighlightedIndex(prev => (prev < suggestions.length - 1 ? prev + 1 : 0));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setHighlightedIndex(prev => (prev > 0 ? prev - 1 : suggestions.length - 1));
+        } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+            e.preventDefault();
+            selectDrug(suggestions[highlightedIndex]);
+        } else if (e.key === 'Escape') {
+            setShowDropdown(false);
+        }
+    };
+
+    // Group suggestions by category for display
+    const groupedSuggestions = suggestions.reduce((groups, drug) => {
+        if (!groups[drug.category]) groups[drug.category] = [];
+        groups[drug.category].push(drug);
+        return groups;
+    }, {});
+
+    // Flatten for index tracking
+    let flatIndex = -1;
+
+    return (
+        <div ref={wrapperRef} className="relative">
+            <input
+                ref={inputRef}
+                required={required}
+                className={inputCls}
+                placeholder={placeholder}
+                value={query}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                onFocus={() => {
+                    if (suggestions.length > 0) setShowDropdown(true);
+                }}
+                autoComplete="off"
+            />
+            {showDropdown && (
+                <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-zinc-200 rounded-2xl shadow-xl max-h-[280px] overflow-y-auto custom-scrollbar">
+                    {Object.entries(groupedSuggestions).map(([category, drugs]) => (
+                        <div key={category}>
+                            <div className="px-4 py-1.5 text-[10px] font-bold text-zinc-400 uppercase tracking-widest bg-zinc-50 sticky top-0 border-b border-zinc-100">
+                                {category}
+                            </div>
+                            {drugs.map((drug) => {
+                                flatIndex++;
+                                const idx = flatIndex;
+                                return (
+                                    <button
+                                        key={`${drug.name}-${drug.strength}`}
+                                        type="button"
+                                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between gap-2 ${
+                                            idx === highlightedIndex
+                                                ? 'bg-indigo-50 text-indigo-700'
+                                                : 'text-zinc-700 hover:bg-zinc-50'
+                                        }`}
+                                        onMouseEnter={() => setHighlightedIndex(idx)}
+                                        onClick={() => selectDrug(drug)}
+                                    >
+                                        <span className="font-medium">{drug.name} <span className="text-zinc-400 font-normal">{drug.strength}</span></span>
+                                        <span className="text-[11px] text-zinc-400 shrink-0">{drug.form}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Prescription Form (with Drug Autocomplete)
+// ═══════════════════════════════════════════════════════════════════════════
 
 export const PrescriptionForm = ({ patientId, onComplete, onCancel }) => {
     const [loading, setLoading] = useState(false);
@@ -58,12 +200,11 @@ export const PrescriptionForm = ({ patientId, onComplete, onCancel }) => {
                 <div className="space-y-3">
                     {medications.map((med, i) => (
                         <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-3 items-start">
-                            <input
+                            <DrugAutocompleteInput
                                 required
-                                className={inputCls}
-                                placeholder="Drug Name / Strength / Form"
+                                placeholder="Type drug name..."
                                 value={med.drug}
-                                onChange={(e) => updateRow(i, 'drug', e.target.value)}
+                                onChange={(val) => updateRow(i, 'drug', val)}
                             />
                             <input
                                 className={inputCls}
@@ -98,18 +239,68 @@ export const PrescriptionForm = ({ patientId, onComplete, onCancel }) => {
     );
 };
 
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Sick Leave Form (with Date Range / Specific Days toggle)
+// ═══════════════════════════════════════════════════════════════════════════
+
 export const SickLeaveForm = ({ patientId, onComplete, onCancel }) => {
     const [loading, setLoading] = useState(false);
+    const [dateMode, setDateMode] = useState('range'); // 'range' or 'specific'
+    const [specificDates, setSpecificDates] = useState([]);
+    const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
     const [formData, setFormData] = useState({
         start_date: new Date().toISOString().split('T')[0],
         end_date: new Date().toISOString().split('T')[0],
         diagnosis: '', recommendations: '',
     });
 
+    const addSpecificDate = () => {
+        if (!newDate) return;
+        if (specificDates.includes(newDate)) {
+            toast.error('This date is already added.');
+            return;
+        }
+        const updated = [...specificDates, newDate].sort();
+        setSpecificDates(updated);
+    };
+
+    const removeSpecificDate = (dateToRemove) => {
+        setSpecificDates(specificDates.filter(d => d !== dateToRemove));
+    };
+
+    const formatDateDisplay = (dateStr) => {
+        const d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault(); setLoading(true);
+
+        if (dateMode === 'specific' && specificDates.length === 0) {
+            toast.error('Please add at least one date.');
+            setLoading(false);
+            return;
+        }
+
         try {
-            const res = await api.post(`/documents/patients/${patientId}/sick-leaves`, formData);
+            const payload = {
+                diagnosis: formData.diagnosis,
+                recommendations: formData.recommendations,
+            };
+
+            if (dateMode === 'specific') {
+                // Use first and last dates as start/end for backward compat
+                const sorted = [...specificDates].sort();
+                payload.start_date = sorted[0];
+                payload.end_date = sorted[sorted.length - 1];
+                payload.specific_dates = sorted;
+            } else {
+                payload.start_date = formData.start_date;
+                payload.end_date = formData.end_date;
+            }
+
+            const res = await api.post(`/documents/patients/${patientId}/sick-leaves`, payload);
             await openAuthenticatedPdf(`/documents/sick-leaves/${res.data.id}/pdf`);
             onComplete();
             toast.success("Sick leave generated successfully!");
@@ -119,16 +310,108 @@ export const SickLeaveForm = ({ patientId, onComplete, onCancel }) => {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-2 gap-5">
-                <div>
-                    <label className={labelCls}>Start Date</label>
-                    <input type="date" required className={inputCls} value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} />
-                </div>
-                <div>
-                    <label className={labelCls}>End Date</label>
-                    <input type="date" required className={inputCls} value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} />
+            {/* ── Mode Toggle ──────────────────────────────────── */}
+            <div>
+                <label className={labelCls}>Leave Period Type</label>
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setDateMode('range')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
+                            dateMode === 'range'
+                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm'
+                                : 'border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
+                        }`}
+                    >
+                        <CalendarDays className="w-4 h-4" />
+                        Date Range
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setDateMode('specific')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-2xl text-sm font-bold transition-all border-2 ${
+                            dateMode === 'specific'
+                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm'
+                                : 'border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 hover:bg-zinc-50'
+                        }`}
+                    >
+                        <Calendar className="w-4 h-4" />
+                        Specific Days
+                    </button>
                 </div>
             </div>
+
+            {/* ── Date Range Mode (existing behavior) ──────────── */}
+            {dateMode === 'range' && (
+                <div className="grid grid-cols-2 gap-5">
+                    <div>
+                        <label className={labelCls}>Start Date</label>
+                        <input type="date" required className={inputCls} value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} />
+                    </div>
+                    <div>
+                        <label className={labelCls}>End Date</label>
+                        <input type="date" required className={inputCls} value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} />
+                    </div>
+                </div>
+            )}
+
+            {/* ── Specific Days Mode ───────────────────────────── */}
+            {dateMode === 'specific' && (
+                <div>
+                    <label className={labelCls}>Select Days</label>
+                    <div className="flex gap-3 items-start">
+                        <input
+                            type="date"
+                            className={inputCls}
+                            value={newDate}
+                            onChange={(e) => setNewDate(e.target.value)}
+                        />
+                        <button
+                            type="button"
+                            onClick={addSpecificDate}
+                            className="shrink-0 py-3.5 px-5 bg-indigo-600 text-white font-bold rounded-2xl shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-2 text-sm"
+                        >
+                            <Plus className="w-4 h-4" /> Add
+                        </button>
+                    </div>
+
+                    {/* Selected dates as chips */}
+                    {specificDates.length > 0 && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            {specificDates.map(date => (
+                                <div
+                                    key={date}
+                                    className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 font-semibold text-sm py-2 px-3.5 rounded-xl group transition-all hover:bg-indigo-100"
+                                >
+                                    <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                                    {formatDateDisplay(date)}
+                                    <button
+                                        type="button"
+                                        onClick={() => removeSpecificDate(date)}
+                                        className="ml-0.5 p-0.5 rounded-full hover:bg-indigo-200 text-indigo-400 hover:text-indigo-700 transition-colors"
+                                        title="Remove date"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {specificDates.length > 0 && (
+                        <p className="mt-2 text-xs text-zinc-400 font-medium ml-1">
+                            {specificDates.length} day{specificDates.length !== 1 ? 's' : ''} selected
+                        </p>
+                    )}
+
+                    {specificDates.length === 0 && (
+                        <p className="mt-3 text-xs text-zinc-400 font-medium ml-1">
+                            Pick a date and click "Add" to select individual sick leave days.
+                        </p>
+                    )}
+                </div>
+            )}
+
             <div>
                 <label className={labelCls}>Diagnosis / Reason</label>
                 <input required className={inputCls} placeholder="e.g. Post-extraction recovery"
@@ -148,6 +431,11 @@ export const SickLeaveForm = ({ patientId, onComplete, onCancel }) => {
         </form>
     );
 };
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Referral Form (unchanged)
+// ═══════════════════════════════════════════════════════════════════════════
 
 export const ReferralForm = ({ patientId, onComplete, onCancel }) => {
     const [loading, setLoading] = useState(false);

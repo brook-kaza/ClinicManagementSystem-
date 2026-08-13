@@ -198,7 +198,14 @@ def create_prescription(db: Session, prescription: schemas.PrescriptionCreate, p
     return db_prescription
 
 def create_sick_leave(db: Session, sick_leave: schemas.SickLeaveCreate, patient_id: int) -> models.SickLeave:
-    db_sick_leave = models.SickLeave(**sick_leave.model_dump(), patient_id=patient_id)
+    data = sick_leave.model_dump()
+    # Serialize specific_dates list to JSON string for Text column storage
+    if data.get('specific_dates'):
+        import json
+        data['specific_dates'] = json.dumps(data['specific_dates'])
+    else:
+        data['specific_dates'] = None
+    db_sick_leave = models.SickLeave(**data, patient_id=patient_id)
     db.add(db_sick_leave)
     db.commit()
     db.refresh(db_sick_leave)

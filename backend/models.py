@@ -123,6 +123,7 @@ class SickLeave(Base):
     end_date: Mapped[datetime] = mapped_column(DateTime)
     diagnosis: Mapped[str] = mapped_column(String(500))
     recommendations: Mapped[Optional[str]] = mapped_column(Text)
+    specific_dates: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array of "YYYY-MM-DD" strings for non-consecutive days
 
     patient: Mapped["Patient"] = relationship(back_populates="sick_leaves")
 
