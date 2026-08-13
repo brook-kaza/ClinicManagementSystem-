@@ -1,6 +1,7 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import List, Optional
 from datetime import datetime
+import json
 
 # --- User/Auth Schemas ---
 
@@ -128,6 +129,18 @@ class SickLeaveRead(SickLeaveBase):
     patient_id: int
     date_issued: datetime
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator('specific_dates', mode='before')
+    @classmethod
+    def parse_specific_dates(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
 
 class ReferralBase(BaseModel):
     referred_to: str = Field(min_length=1, max_length=250)
