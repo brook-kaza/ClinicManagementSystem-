@@ -303,8 +303,8 @@ export const SickLeaveForm = ({ patientId, onComplete, onCancel }) => {
             const res = await api.post(`/documents/patients/${patientId}/sick-leaves`, payload);
             await openAuthenticatedPdf(`/documents/sick-leaves/${res.data.id}/pdf`);
             onComplete();
-            toast.success("Sick leave generated successfully!");
-        } catch (error) { console.error(error); toast.error("Failed to save sick leave."); }
+            toast.success("Medical Certificate generated successfully!");
+        } catch (error) { console.error(error); toast.error("Failed to save medical certificate."); }
         finally { setLoading(false); }
     };
 
@@ -312,7 +312,7 @@ export const SickLeaveForm = ({ patientId, onComplete, onCancel }) => {
         <form onSubmit={handleSubmit} className="space-y-6">
             {/* ── Mode Toggle ──────────────────────────────────── */}
             <div>
-                <label className={labelCls}>Leave Period Type</label>
+                <label className={labelCls}>Medical Leave Period Type</label>
                 <div className="flex gap-2">
                     <button
                         type="button"
@@ -413,19 +413,19 @@ export const SickLeaveForm = ({ patientId, onComplete, onCancel }) => {
             )}
 
             <div>
-                <label className={labelCls}>Diagnosis / Reason</label>
-                <input required className={inputCls} placeholder="e.g. Post-extraction recovery"
+                <label className={labelCls}>Diagnosis / Treatment Reason</label>
+                <input required className={inputCls} placeholder="e.g. Acute Pulpitis, Surgical Extraction #38"
                     value={formData.diagnosis} onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })} />
             </div>
             <div>
-                <label className={labelCls}>Recommendations</label>
-                <textarea className={`${inputCls} min-h-[100px] resize-y custom-scrollbar`} placeholder="e.g. Avoid hard foods, bed rest for 2 days"
+                <label className={labelCls}>Medical Recommendations &amp; Remarks</label>
+                <textarea className={`${inputCls} min-h-[100px] resize-y custom-scrollbar`} placeholder="e.g. Bed rest, soft diet, avoid strenuous physical activities, take prescribed medications"
                     value={formData.recommendations} onChange={(e) => setFormData({ ...formData, recommendations: e.target.value })} />
             </div>
             <div className="flex gap-4 pt-4 border-t border-zinc-100">
                 <button type="button" onClick={onCancel} className="flex-1 py-4 rounded-2xl font-bold text-zinc-500 hover:bg-zinc-100 transition-colors text-sm focus-ring">Cancel</button>
                 <button type="submit" disabled={loading} className="flex-[2] py-4 bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/30 hover:bg-indigo-700 disabled:opacity-60 transition-all flex items-center justify-center gap-3 text-sm focus-ring">
-                    {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Printer className="w-5 h-5" /> Issue & Print Sick Leave</>}
+                    {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Printer className="w-5 h-5" /> Issue &amp; Print Medical Certificate</>}
                 </button>
             </div>
         </form>

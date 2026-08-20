@@ -23,9 +23,10 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 # ── Fixed Clinic Details ─────────────────────────────────────────────────
 CLINIC_NAME_EN = "Hani Dental Clinic"
-CLINIC_PHONE = "0911 828 262"
+CLINIC_PHONE = "0911828262"
 CLINIC_ADDRESS = "Bole Mikael, Addis Ababa"
 DOCTOR_NAME = "Dr. Dawit Ayalew"
+DOCTOR_LICENSE = "EFDA/MED/48291"
 
 
 def get_db():
@@ -405,99 +406,300 @@ def get_prescription_pdf(prescription_id: int, db: Session = Depends(get_db), cu
     raise HTTPException(status_code=500, detail="PDF generation failed")
 
 
-@router.get("/sick-leaves/{sick_leave_id}/pdf")
-def get_sick_leave_pdf(sick_leave_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
-    sl = db.query(models.SickLeave).filter(models.SickLeave.id == sick_leave_id).first()
-    if not sl:
-        raise HTTPException(status_code=404, detail="Sick Leave not found")
+# ═══════════════════════════════════════════════════════════════════════════
+#  Formal Medical Certificate Template Generator
+# ═══════════════════════════════════════════════════════════════════════════
 
-    patient = sl.patient
-    local_issued = sl.date_issued
-    patient_block = _build_patient_block(patient, "Sick Leave", f"SL-{sl.id}", local_issued)
+def _build_medical_certificate_html(sl: models.SickLeave, patient: models.Patient, current_user: models.User) -> str:
+    import json
+    from datetime import datetime as dt
 
-    # Determine if this is a specific-dates or date-range sick leave
+    cert_no = f"HDC-MC-{sl.date_issued.strftime('%Y%m')}-{sl.id:04d}"
+    date_issued_str = sl.date_issued.strftime("%d %B %Y")
+    patient_name = _esc(patient.full_name)
+    age_str = str(patient.age) if patient.age is not None else "-"
+    sex_str = patient.sex if patient.sex else "-"
+    age_sex = f"{age_str} / {sex_str}"
+    patient_id = _esc(patient.card_number) if patient.card_number else f"HDC-{patient.id:04d}"
+    date_examined_str = sl.start_date.strftime("%d %B %Y") if sl.start_date else date_issued_str
+
+    # Process leave dates (date range or specific days)
     specific_dates_list = None
     if sl.specific_dates:
-        import json
         try:
             specific_dates_list = json.loads(sl.specific_dates)
         except (json.JSONDecodeError, TypeError):
             specific_dates_list = None
 
     if specific_dates_list and len(specific_dates_list) > 0:
-        # ── Specific Days Mode ──────────────────────────────
-        from datetime import datetime as dt
-        days = len(specific_dates_list)
-        formatted_dates = []
+        days_count = len(specific_dates_list)
+        formatted_specific = []
         for d_str in specific_dates_list:
             try:
                 d = dt.strptime(d_str, "%Y-%m-%d")
-                formatted_dates.append(f"<b>{d.strftime('%d %B %Y')}</b>")
+                formatted_specific.append(d.strftime("%d %b %Y"))
             except ValueError:
-                formatted_dates.append(f"<b>{_esc(d_str)}</b>")
-
-        if len(formatted_dates) == 1:
-            dates_text = formatted_dates[0]
-        elif len(formatted_dates) == 2:
-            dates_text = f"{formatted_dates[0]} and {formatted_dates[1]}"
+                formatted_specific.append(_esc(d_str))
+        
+        rest_days_str = f"{days_count} day(s)"
+        if days_count == 1:
+            from_to_str = f"{formatted_specific[0]} (1 specific day)"
         else:
-            dates_text = ", ".join(formatted_dates[:-1]) + f", and {formatted_dates[-1]}"
-
-        cert_content = f"""
-            To whom it may concern,<br/><br/>
-            This is to certify that <b>{_esc(patient.full_name)}</b>
-            (Card No. <b>{_esc(patient.card_number)}</b>) is currently
-            under professional dental care at <b>{CLINIC_NAME_EN}</b>.<br/><br/>
-            Due to <b>{_esc(sl.diagnosis)}</b>, the patient is medically
-            advised to rest on the following date(s):
-            {dates_text},
-            totalling <b>{days}</b> day(s).
-        """
-
-        # Build a list of individual dates for the period section
-        dates_list_html = "<br/>".join(
-            f"&bull;&nbsp;&nbsp;{fd}" for fd in formatted_dates
-        )
-        period_content = f"""
-            {dates_list_html}
-            <br/><br/>
-            <b>{days}</b> day(s) total
-        """
+            from_to_str = f"{sl.start_date.strftime('%d %B %Y')} to {sl.end_date.strftime('%d %B %Y')} (Specific days: {', '.join(formatted_specific)})"
     else:
-        # ── Date Range Mode (original behavior) ────────────
-        days = (sl.end_date - sl.start_date).days + 1
+        days_count = (sl.end_date - sl.start_date).days + 1
+        rest_days_str = f"{days_count} day(s)"
+        from_to_str = f"{sl.start_date.strftime('%d %B %Y')} to {sl.end_date.strftime('%d %B %Y')}"
 
-        cert_content = f"""
-            To whom it may concern,<br/><br/>
-            This is to certify that <b>{_esc(patient.full_name)}</b>
-            (Card No. <b>{_esc(patient.card_number)}</b>) is currently
-            under professional dental care at <b>{CLINIC_NAME_EN}</b>.<br/><br/>
-            Due to <b>{_esc(sl.diagnosis)}</b>, the patient is medically
-            advised to rest and recover from
-            <b>{sl.start_date.strftime('%d %B %Y')}</b> to
-            <b>{sl.end_date.strftime('%d %B %Y')}</b>,
-            inclusive of <b>{days}</b> day(s).
-        """
+    diagnosis_str = _esc(sl.diagnosis or "Clinical examination & dental procedure")
+    remarks_str = _esc(sl.recommendations or "Adhere to prescribed medications, maintain oral hygiene, and return for clinical review if symptoms persist.")
+    doctor_name = current_user.full_name or DOCTOR_NAME
+    license_no = DOCTOR_LICENSE
 
-        period_content = f"""
-            <b>{sl.start_date.strftime('%d %B %Y')}</b>
-            &nbsp;&mdash;&nbsp;
-            <b>{sl.end_date.strftime('%d %B %Y')}</b>
-            &nbsp;&nbsp;({days} day/s total)
-        """
-    
-    diag_content = _esc(sl.diagnosis)
-    rec_content = _esc(sl.recommendations or 'Bed rest, hydration, and adherence to prescribed medications.')
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<style>
+    @page {{
+        size: A4 portrait;
+        margin: 12mm 16mm 10mm 16mm;
+    }}
 
-    body = (
-        _build_section("Medical Certification", cert_content) +
-        _build_section("Primary Diagnosis", diag_content) +
-        _build_section("Recommended Leave Period", period_content) +
-        _build_section("General Recommendations", rec_content)
-    )
+    body {{
+        font-family: Helvetica, Arial, sans-serif;
+        color: #111827;
+        font-size: 8.5pt;
+        line-height: 1.35;
+    }}
 
-    doctor_display = current_user.full_name or current_user.username
-    pdf = render_pdf(get_base_html("Medical Sick Leave Certificate", patient_block, body, local_issued, doctor_name=doctor_display))
+    /* ── CLINIC HEADER ─────────────────────────────────────── */
+    .header-box {{
+        text-align: center;
+        margin-bottom: 10pt;
+    }}
+    .clinic-name {{
+        font-size: 15pt;
+        font-weight: bold;
+        color: #111827;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        margin-bottom: 2pt;
+    }}
+    .clinic-contact {{
+        font-size: 8.5pt;
+        color: #374151;
+    }}
+
+    /* ── DOCUMENT TITLE ────────────────────────────────────── */
+    .doc-title {{
+        text-align: center;
+        font-size: 12pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #111827;
+        margin-bottom: 10pt;
+    }}
+
+    /* ── FORMAL GRID TABLES ────────────────────────────────── */
+    .cert-table {{
+        width: 100%;
+        border-collapse: collapse;
+        border: 0.75pt solid #9ca3af;
+        margin-bottom: 1pt;
+    }}
+    .cert-table td {{
+        border: 0.75pt solid #9ca3af;
+        padding: 4pt 8pt;
+        vertical-align: middle;
+        font-size: 8.5pt;
+    }}
+    .lbl-col {{
+        width: 38%;
+        color: #374151;
+        font-weight: normal;
+    }}
+    .val-col {{
+        width: 62%;
+        color: #111827;
+        font-weight: bold;
+    }}
+
+    /* ── INTERMEDIATE TEXT LABELS ──────────────────────────── */
+    .sec-label {{
+        font-size: 8.5pt;
+        color: #1f2937;
+        margin-top: 6pt;
+        margin-bottom: 2.5pt;
+        font-weight: normal;
+    }}
+
+    /* ── BOXED TEXT AREAS (Diagnosis, Remarks) ─────────────── */
+    .boxed-area {{
+        width: 100%;
+        border-collapse: collapse;
+        border: 0.75pt solid #9ca3af;
+        margin-bottom: 1pt;
+    }}
+    .boxed-area td {{
+        border: 0.75pt solid #9ca3af;
+        padding: 5pt 8pt;
+        min-height: 22pt;
+        font-size: 8.5pt;
+        vertical-align: top;
+        color: #111827;
+    }}
+
+    /* ── SIGN-OFF TABLE ────────────────────────────────────── */
+    .sign-table {{
+        width: 100%;
+        border-collapse: collapse;
+        border: 0.75pt solid #9ca3af;
+        margin-top: 8pt;
+        margin-bottom: 1pt;
+    }}
+    .sign-table td {{
+        border: 0.75pt solid #9ca3af;
+        padding: 4.5pt 8pt;
+        vertical-align: middle;
+        font-size: 8.5pt;
+    }}
+
+    /* ── FOOTER NOTE ───────────────────────────────────────── */
+    .footer-note {{
+        text-align: center;
+        font-size: 7.5pt;
+        color: #4b5563;
+        font-style: italic;
+        margin-top: 8pt;
+    }}
+</style>
+</head>
+<body>
+
+    <!-- CLINIC HEADER -->
+    <div class="header-box">
+        <div class="clinic-name">{CLINIC_NAME_EN}</div>
+        <div class="clinic-contact">{CLINIC_ADDRESS} &nbsp;|&nbsp; Tel: {CLINIC_PHONE}</div>
+    </div>
+
+    <!-- DOCUMENT TITLE -->
+    <div class="doc-title">MEDICAL CERTIFICATE</div>
+
+    <!-- CERTIFICATE DETAILS -->
+    <table class="cert-table" cellspacing="0" cellpadding="0">
+        <tr>
+            <td class="lbl-col">Certificate No.:</td>
+            <td class="val-col">{cert_no}</td>
+        </tr>
+        <tr>
+            <td class="lbl-col">Date Issued:</td>
+            <td class="val-col">{date_issued_str}</td>
+        </tr>
+    </table>
+
+    <!-- PATIENT INTRO -->
+    <div class="sec-label">This is to certify that:</div>
+
+    <!-- PATIENT DETAILS -->
+    <table class="cert-table" cellspacing="0" cellpadding="0">
+        <tr>
+            <td class="lbl-col">Patient Name:</td>
+            <td class="val-col">{patient_name}</td>
+        </tr>
+        <tr>
+            <td class="lbl-col">Age / Sex:</td>
+            <td class="val-col">{age_sex}</td>
+        </tr>
+        <tr>
+            <td class="lbl-col">Patient ID:</td>
+            <td class="val-col">{patient_id}</td>
+        </tr>
+        <tr>
+            <td class="lbl-col">Date Examined:</td>
+            <td class="val-col">{date_examined_str}</td>
+        </tr>
+    </table>
+
+    <!-- DIAGNOSIS LABEL -->
+    <div class="sec-label">was examined at Hani Dental Clinic and was diagnosed with / treated for:</div>
+
+    <!-- DIAGNOSIS BOX -->
+    <table class="boxed-area" cellspacing="0" cellpadding="0">
+        <tr>
+            <td>
+                <b>{diagnosis_str.replace(chr(10), '<br/>')}</b>
+            </td>
+        </tr>
+    </table>
+
+    <!-- RECOMMENDATION LABEL -->
+    <div class="sec-label">Medical recommendation:</div>
+
+    <!-- RECOMMENDATION TABLE -->
+    <table class="cert-table" cellspacing="0" cellpadding="0">
+        <tr>
+            <td class="lbl-col">Recommended rest / leave:</td>
+            <td class="val-col">{rest_days_str}</td>
+        </tr>
+        <tr>
+            <td class="lbl-col">From / To:</td>
+            <td class="val-col">{from_to_str}</td>
+        </tr>
+    </table>
+
+    <!-- REMARKS LABEL -->
+    <div class="sec-label">Additional remarks:</div>
+
+    <!-- REMARKS BOX -->
+    <table class="boxed-area" cellspacing="0" cellpadding="0">
+        <tr>
+            <td>
+                {remarks_str.replace(chr(10), '<br/>')}
+            </td>
+        </tr>
+    </table>
+
+    <!-- DOCTOR / DENTIST SIGN-OFF -->
+    <table class="sign-table" cellspacing="0" cellpadding="0">
+        <tr>
+            <td class="lbl-col">Doctor / Dentist:</td>
+            <td class="val-col">{doctor_name}</td>
+        </tr>
+        <tr>
+            <td class="lbl-col">Professional License No.:</td>
+            <td class="val-col">{license_no}</td>
+        </tr>
+        <tr>
+            <td class="lbl-col">Signature:</td>
+            <td class="val-col">________________________________________</td>
+        </tr>
+        <tr>
+            <td class="lbl-col">Clinic Stamp:</td>
+            <td class="val-col">________________________________________</td>
+        </tr>
+    </table>
+
+    <!-- FOOTER NOTE -->
+    <div class="footer-note">
+        This certificate is issued based on the clinical examination and findings recorded at Hani Dental Clinic.
+    </div>
+
+</body>
+</html>"""
+
+
+@router.get("/sick-leaves/{sick_leave_id}/pdf")
+@router.get("/medical-certificates/{sick_leave_id}/pdf")
+def get_sick_leave_pdf(sick_leave_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    sl = db.query(models.SickLeave).filter(models.SickLeave.id == sick_leave_id).first()
+    if not sl:
+        raise HTTPException(status_code=404, detail="Medical Certificate / Sick Leave not found")
+
+    patient = sl.patient
+    html_content = _build_medical_certificate_html(sl, patient, current_user)
+    pdf = render_pdf(html_content)
     if pdf:
         return Response(content=pdf, media_type="application/pdf")
     raise HTTPException(status_code=500, detail="PDF generation failed")

@@ -550,7 +550,7 @@ const ClinicalHub = () => {
                                 <div className="space-y-2">
                                     {[
                                         { key: 'prescription', label: 'Write Prescription' },
-                                        { key: 'sick_leave', label: 'Issue Sick Leave' },
+                                        { key: 'sick_leave', label: 'Issue Medical Certificate' },
                                         { key: 'referral', label: 'External Referral' },
                                     ].map(doc => (
                                         <button key={doc.key} onClick={() => setActiveDocumentModal(doc.key)}
@@ -609,7 +609,7 @@ const ClinicalHub = () => {
                         <div className="px-8 py-6 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/80 shrink-0 select-none rounded-t-[2rem]">
                             <h3 className="font-bold text-zinc-900 text-xl font-heading capitalize flex items-center gap-3">
                                 <FileText className="w-6 h-6 text-indigo-600" />
-                                Generate {activeDocumentModal.replace('_', ' ')}
+                                Generate {activeDocumentModal === 'sick_leave' ? 'Medical Certificate' : activeDocumentModal.replace('_', ' ')}
                             </h3>
                             <button onClick={() => setActiveDocumentModal(null)} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-zinc-200 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors text-2xl font-light shadow-sm pb-1">×</button>
                         </div>
