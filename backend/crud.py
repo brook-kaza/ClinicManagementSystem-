@@ -211,6 +211,27 @@ def create_sick_leave(db: Session, sick_leave: schemas.SickLeaveCreate, patient_
     db.refresh(db_sick_leave)
     return db_sick_leave
 
+def create_medical_certificate(db: Session, mc: schemas.MedicalCertificateCreate, patient_id: int, doctor_name: Optional[str] = None, license_no: Optional[str] = None) -> models.MedicalCertificate:
+    data = mc.model_dump()
+    if data.get('specific_dates'):
+        import json
+        data['specific_dates'] = json.dumps(data['specific_dates'])
+    else:
+        data['specific_dates'] = None
+    if not data.get('date_examined'):
+        data['date_examined'] = models.get_local_time_eat()
+
+    db_mc = models.MedicalCertificate(
+        **data,
+        patient_id=patient_id,
+        doctor_name=doctor_name or "Dr. Dawit Ayalew",
+        license_no=license_no or "EFDA/MED/48291"
+    )
+    db.add(db_mc)
+    db.commit()
+    db.refresh(db_mc)
+    return db_mc
+
 def create_referral(db: Session, referral: schemas.ReferralCreate, patient_id: int) -> models.Referral:
     db_referral = models.Referral(**referral.model_dump(), patient_id=patient_id)
     db.add(db_referral)

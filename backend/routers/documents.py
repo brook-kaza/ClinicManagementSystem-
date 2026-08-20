@@ -45,6 +45,11 @@ def create_prescription(patient_id: int, prescription: schemas.PrescriptionCreat
 def create_sick_leave(patient_id: int, sick_leave: schemas.SickLeaveCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
     return crud.create_sick_leave(db=db, sick_leave=sick_leave, patient_id=patient_id)
 
+@router.post("/patients/{patient_id}/medical-certificates", response_model=schemas.MedicalCertificateRead)
+def create_medical_certificate(patient_id: int, mc: schemas.MedicalCertificateCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    doctor_display = current_user.full_name or DOCTOR_NAME
+    return crud.create_medical_certificate(db=db, mc=mc, patient_id=patient_id, doctor_name=doctor_display, license_no=DOCTOR_LICENSE)
+
 @router.post("/patients/{patient_id}/referrals", response_model=schemas.ReferralRead)
 def create_referral(patient_id: int, referral: schemas.ReferralCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
     return crud.create_referral(db=db, referral=referral, patient_id=patient_id)
@@ -410,24 +415,24 @@ def get_prescription_pdf(prescription_id: int, db: Session = Depends(get_db), cu
 #  Formal Medical Certificate Template Generator
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _build_medical_certificate_html(sl: models.SickLeave, patient: models.Patient, current_user: models.User) -> str:
+def _build_medical_certificate_html(mc: models.MedicalCertificate, patient: models.Patient, current_user: models.User) -> str:
     import json
     from datetime import datetime as dt
 
-    cert_no = f"HDC-MC-{sl.date_issued.strftime('%Y%m')}-{sl.id:04d}"
-    date_issued_str = sl.date_issued.strftime("%d %B %Y")
+    cert_no = f"HDC-MC-{mc.date_issued.strftime('%Y%m')}-{mc.id:04d}"
+    date_issued_str = mc.date_issued.strftime("%d %B %Y")
     patient_name = _esc(patient.full_name)
     age_str = str(patient.age) if patient.age is not None else "-"
     sex_str = patient.sex if patient.sex else "-"
     age_sex = f"{age_str} / {sex_str}"
     patient_id = _esc(patient.card_number) if patient.card_number else f"HDC-{patient.id:04d}"
-    date_examined_str = sl.start_date.strftime("%d %B %Y") if sl.start_date else date_issued_str
+    date_examined_str = mc.date_examined.strftime("%d %B %Y") if mc.date_examined else date_issued_str
 
-    # Process leave dates (date range or specific days)
+    # Process leave dates (date range, specific days, or days count)
     specific_dates_list = None
-    if sl.specific_dates:
+    if mc.specific_dates:
         try:
-            specific_dates_list = json.loads(sl.specific_dates)
+            specific_dates_list = json.loads(mc.specific_dates)
         except (json.JSONDecodeError, TypeError):
             specific_dates_list = None
 
@@ -444,17 +449,25 @@ def _build_medical_certificate_html(sl: models.SickLeave, patient: models.Patien
         rest_days_str = f"{days_count} day(s)"
         if days_count == 1:
             from_to_str = f"{formatted_specific[0]} (1 specific day)"
+        elif mc.start_date and mc.end_date:
+            from_to_str = f"{mc.start_date.strftime('%d %B %Y')} to {mc.end_date.strftime('%d %B %Y')} (Specific days: {', '.join(formatted_specific)})"
         else:
-            from_to_str = f"{sl.start_date.strftime('%d %B %Y')} to {sl.end_date.strftime('%d %B %Y')} (Specific days: {', '.join(formatted_specific)})"
-    else:
-        days_count = (sl.end_date - sl.start_date).days + 1
+            from_to_str = f"Specific days: {', '.join(formatted_specific)}"
+    elif mc.start_date and mc.end_date:
+        days_count = mc.recommended_rest_days if mc.recommended_rest_days is not None else ((mc.end_date - mc.start_date).days + 1)
         rest_days_str = f"{days_count} day(s)"
-        from_to_str = f"{sl.start_date.strftime('%d %B %Y')} to {sl.end_date.strftime('%d %B %Y')}"
+        from_to_str = f"{mc.start_date.strftime('%d %B %Y')} to {mc.end_date.strftime('%d %B %Y')}"
+    elif mc.recommended_rest_days:
+        rest_days_str = f"{mc.recommended_rest_days} day(s)"
+        from_to_str = "As clinically recommended"
+    else:
+        rest_days_str = "Fit for normal duties / No leave required"
+        from_to_str = "N/A"
 
-    diagnosis_str = _esc(sl.diagnosis or "Clinical examination & dental procedure")
-    remarks_str = _esc(sl.recommendations or "Adhere to prescribed medications, maintain oral hygiene, and return for clinical review if symptoms persist.")
-    doctor_name = current_user.full_name or DOCTOR_NAME
-    license_no = DOCTOR_LICENSE
+    diagnosis_str = _esc(mc.diagnosis or "Clinical examination & dental procedure")
+    remarks_str = _esc(mc.remarks or "Adhere to prescribed medications, maintain oral hygiene, and return for clinical review if symptoms persist.")
+    doctor_name = mc.doctor_name or current_user.full_name or DOCTOR_NAME
+    license_no = mc.license_no or DOCTOR_LICENSE
 
     return f"""<!DOCTYPE html>
 <html>
@@ -690,16 +703,110 @@ def _build_medical_certificate_html(sl: models.SickLeave, patient: models.Patien
 </html>"""
 
 
+@router.get("/medical-certificates/{mc_id}/pdf")
+def get_medical_certificate_pdf(mc_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+    mc = db.query(models.MedicalCertificate).filter(models.MedicalCertificate.id == mc_id).first()
+    if not mc:
+        raise HTTPException(status_code=404, detail="Medical Certificate not found")
+
+    patient = mc.patient
+    html_content = _build_medical_certificate_html(mc, patient, current_user)
+    pdf = render_pdf(html_content)
+    if pdf:
+        return Response(content=pdf, media_type="application/pdf")
+    raise HTTPException(status_code=500, detail="PDF generation failed")
+
+
 @router.get("/sick-leaves/{sick_leave_id}/pdf")
-@router.get("/medical-certificates/{sick_leave_id}/pdf")
 def get_sick_leave_pdf(sick_leave_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
     sl = db.query(models.SickLeave).filter(models.SickLeave.id == sick_leave_id).first()
     if not sl:
-        raise HTTPException(status_code=404, detail="Medical Certificate / Sick Leave not found")
+        raise HTTPException(status_code=404, detail="Sick Leave not found")
 
     patient = sl.patient
-    html_content = _build_medical_certificate_html(sl, patient, current_user)
-    pdf = render_pdf(html_content)
+    local_issued = sl.date_issued
+    patient_block = _build_patient_block(patient, "Sick Leave", f"SL-{sl.id}", local_issued)
+
+    # Determine if this is a specific-dates or date-range sick leave
+    specific_dates_list = None
+    if sl.specific_dates:
+        import json
+        try:
+            specific_dates_list = json.loads(sl.specific_dates)
+        except (json.JSONDecodeError, TypeError):
+            specific_dates_list = None
+
+    if specific_dates_list and len(specific_dates_list) > 0:
+        from datetime import datetime as dt
+        days = len(specific_dates_list)
+        formatted_dates = []
+        for d_str in specific_dates_list:
+            try:
+                d = dt.strptime(d_str, "%Y-%m-%d")
+                formatted_dates.append(f"<b>{d.strftime('%d %B %Y')}</b>")
+            except ValueError:
+                formatted_dates.append(f"<b>{_esc(d_str)}</b>")
+
+        if len(formatted_dates) == 1:
+            dates_text = formatted_dates[0]
+        elif len(formatted_dates) == 2:
+            dates_text = f"{formatted_dates[0]} and {formatted_dates[1]}"
+        else:
+            dates_text = ", ".join(formatted_dates[:-1]) + f", and {formatted_dates[-1]}"
+
+        cert_content = f"""
+            To whom it may concern,<br/><br/>
+            This is to certify that <b>{_esc(patient.full_name)}</b>
+            (Card No. <b>{_esc(patient.card_number)}</b>) is currently
+            under professional dental care at <b>{CLINIC_NAME_EN}</b>.<br/><br/>
+            Due to <b>{_esc(sl.diagnosis)}</b>, the patient is medically
+            advised to rest on the following date(s):
+            {dates_text},
+            totalling <b>{days}</b> day(s).
+        """
+
+        dates_list_html = "<br/>".join(
+            f"&bull;&nbsp;&nbsp;{fd}" for fd in formatted_dates
+        )
+        period_content = f"""
+            {dates_list_html}
+            <br/><br/>
+            <b>{days}</b> day(s) total
+        """
+    else:
+        days = (sl.end_date - sl.start_date).days + 1
+
+        cert_content = f"""
+            To whom it may concern,<br/><br/>
+            This is to certify that <b>{_esc(patient.full_name)}</b>
+            (Card No. <b>{_esc(patient.card_number)}</b>) is currently
+            under professional dental care at <b>{CLINIC_NAME_EN}</b>.<br/><br/>
+            Due to <b>{_esc(sl.diagnosis)}</b>, the patient is medically
+            advised to rest and recover from
+            <b>{sl.start_date.strftime('%d %B %Y')}</b> to
+            <b>{sl.end_date.strftime('%d %B %Y')}</b>,
+            inclusive of <b>{days}</b> day(s).
+        """
+
+        period_content = f"""
+            <b>{sl.start_date.strftime('%d %B %Y')}</b>
+            &nbsp;&mdash;&nbsp;
+            <b>{sl.end_date.strftime('%d %B %Y')}</b>
+            &nbsp;&nbsp;({days} day/s total)
+        """
+    
+    diag_content = _esc(sl.diagnosis)
+    rec_content = _esc(sl.recommendations or 'Bed rest, hydration, and adherence to prescribed medications.')
+
+    body = (
+        _build_section("Medical Certification", cert_content) +
+        _build_section("Primary Diagnosis", diag_content) +
+        _build_section("Recommended Leave Period", period_content) +
+        _build_section("General Recommendations", rec_content)
+    )
+
+    doctor_display = current_user.full_name or current_user.username
+    pdf = render_pdf(get_base_html("Medical Sick Leave Certificate", patient_block, body, local_issued, doctor_name=doctor_display))
     if pdf:
         return Response(content=pdf, media_type="application/pdf")
     raise HTTPException(status_code=500, detail="PDF generation failed")

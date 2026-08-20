@@ -4,7 +4,7 @@ import { FileText, ChevronRight, Activity, ShieldAlert, Plus, CircleCheck as Che
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { PrescriptionForm, SickLeaveForm, ReferralForm } from '../components/DocumentForms';
+import { PrescriptionForm, SickLeaveForm, MedicalCertificateForm, ReferralForm } from '../components/DocumentForms';
 import PatientBilling from '../components/PatientBilling';
 import AccessDenied from '../components/AccessDenied';
 import ConfirmModal from '../components/ConfirmModal';
@@ -550,7 +550,8 @@ const ClinicalHub = () => {
                                 <div className="space-y-2">
                                     {[
                                         { key: 'prescription', label: 'Write Prescription' },
-                                        { key: 'sick_leave', label: 'Issue Medical Certificate' },
+                                        { key: 'sick_leave', label: 'Issue Sick Leave' },
+                                        { key: 'medical_certificate', label: 'Issue Medical Certificate' },
                                         { key: 'referral', label: 'External Referral' },
                                     ].map(doc => (
                                         <button key={doc.key} onClick={() => setActiveDocumentModal(doc.key)}
@@ -609,13 +610,14 @@ const ClinicalHub = () => {
                         <div className="px-8 py-6 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/80 shrink-0 select-none rounded-t-[2rem]">
                             <h3 className="font-bold text-zinc-900 text-xl font-heading capitalize flex items-center gap-3">
                                 <FileText className="w-6 h-6 text-indigo-600" />
-                                Generate {activeDocumentModal === 'sick_leave' ? 'Medical Certificate' : activeDocumentModal.replace('_', ' ')}
+                                Generate {activeDocumentModal.replace('_', ' ')}
                             </h3>
                             <button onClick={() => setActiveDocumentModal(null)} className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-zinc-200 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors text-2xl font-light shadow-sm pb-1">×</button>
                         </div>
                         <div className="p-8 overflow-y-auto bg-white rounded-b-[2rem]" style={{ overflowY: 'auto' }}>
                             {activeDocumentModal === 'prescription' && <PrescriptionForm patientId={patientId} onComplete={() => setActiveDocumentModal(null)} onCancel={() => setActiveDocumentModal(null)} />}
                             {activeDocumentModal === 'sick_leave' && <SickLeaveForm patientId={patientId} onComplete={() => setActiveDocumentModal(null)} onCancel={() => setActiveDocumentModal(null)} />}
+                            {activeDocumentModal === 'medical_certificate' && <MedicalCertificateForm patientId={patientId} onComplete={() => setActiveDocumentModal(null)} onCancel={() => setActiveDocumentModal(null)} />}
                             {activeDocumentModal === 'referral' && <ReferralForm patientId={patientId} onComplete={() => setActiveDocumentModal(null)} onCancel={() => setActiveDocumentModal(null)} />}
                         </div>
                     </div>

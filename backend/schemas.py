@@ -142,6 +142,39 @@ class SickLeaveRead(SickLeaveBase):
                 return None
         return v
 
+class MedicalCertificateBase(BaseModel):
+    date_examined: Optional[datetime] = None
+    diagnosis: str = Field(min_length=1, max_length=500)
+    recommended_rest_days: Optional[int] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    specific_dates: Optional[List[str]] = None
+    remarks: Optional[str] = Field(default=None, max_length=1500)
+    visit_id: Optional[int] = None
+
+class MedicalCertificateCreate(MedicalCertificateBase):
+    pass
+
+class MedicalCertificateRead(MedicalCertificateBase):
+    id: int
+    patient_id: int
+    date_issued: datetime
+    doctor_name: Optional[str] = None
+    license_no: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator('specific_dates', mode='before')
+    @classmethod
+    def parse_specific_dates(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
+
 class ReferralBase(BaseModel):
     referred_to: str = Field(min_length=1, max_length=250)
     reason: str = Field(min_length=1, max_length=1000)
@@ -256,6 +289,7 @@ class PatientRead(PatientBase):
     visits: List[VisitRead] = []
     prescriptions: List[PrescriptionRead] = []
     sick_leaves: List[SickLeaveRead] = []
+    medical_certificates: List[MedicalCertificateRead] = []
     referrals: List[ReferralRead] = []
     invoices: List[InvoiceRead] = []
     appointments: List["AppointmentRead"] = []

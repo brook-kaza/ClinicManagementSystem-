@@ -510,9 +510,15 @@ const PatientHistory = () => {
                                                 </button>
                                             ))}
                                             {(patient?.sick_leaves || []).filter(s => s.visit_id === visit.id).map(s => (
-                                                <button key={s.id} onClick={async () => { try { const res = await api.get(`/documents/sick-leaves/${s.id}/pdf`, { responseType: 'blob' }); const url = window.URL.createObjectURL(res.data); window.open(url, '_blank'); } catch (err) { console.error(err); toast.error('Failed to open medical certificate PDF.'); } }}
+                                                <button key={s.id} onClick={async () => { try { const res = await api.get(`/documents/sick-leaves/${s.id}/pdf`, { responseType: 'blob' }); const url = window.URL.createObjectURL(res.data); window.open(url, '_blank'); } catch (err) { console.error(err); toast.error('Failed to open sick leave PDF.'); } }}
                                                     className="flex items-center gap-2 px-5 py-3 bg-white text-violet-600 border border-violet-200 shadow-sm rounded-xl text-[11px] font-bold hover:bg-violet-50 hover:border-violet-300 transition-all uppercase tracking-widest focus-ring">
-                                                    <Thermometer className="w-4 h-4" /> Medical Certificate
+                                                    <Thermometer className="w-4 h-4" /> Sick Leave
+                                                </button>
+                                            ))}
+                                            {(patient?.medical_certificates || []).filter(mc => mc.visit_id === visit.id).map(mc => (
+                                                <button key={mc.id} onClick={async () => { try { const res = await api.get(`/documents/medical-certificates/${mc.id}/pdf`, { responseType: 'blob' }); const url = window.URL.createObjectURL(res.data); window.open(url, '_blank'); } catch (err) { console.error(err); toast.error('Failed to open medical certificate PDF.'); } }}
+                                                    className="flex items-center gap-2 px-5 py-3 bg-white text-indigo-600 border border-indigo-200 shadow-sm rounded-xl text-[11px] font-bold hover:bg-indigo-50 hover:border-indigo-300 transition-all uppercase tracking-widest focus-ring">
+                                                    <FileText className="w-4 h-4" /> Medical Certificate
                                                 </button>
                                             ))}
                                             {(patient?.referrals || []).filter(r => r.visit_id === visit.id).map(r => (

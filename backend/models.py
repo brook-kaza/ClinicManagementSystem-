@@ -51,6 +51,9 @@ class Patient(Base):
     sick_leaves: Mapped[List["SickLeave"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan"
     )
+    medical_certificates: Mapped[List["MedicalCertificate"]] = relationship(
+        back_populates="patient", cascade="all, delete-orphan"
+    )
     referrals: Mapped[List["Referral"]] = relationship(
         back_populates="patient", cascade="all, delete-orphan"
     )
@@ -126,6 +129,25 @@ class SickLeave(Base):
     specific_dates: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array of "YYYY-MM-DD" strings for non-consecutive days
 
     patient: Mapped["Patient"] = relationship(back_populates="sick_leaves")
+
+class MedicalCertificate(Base):
+    __tablename__ = "medical_certificates"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    visit_id: Mapped[Optional[int]] = mapped_column(ForeignKey("visits.id"))
+    date_issued: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
+    date_examined: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
+    diagnosis: Mapped[str] = mapped_column(String(500))  # Diagnosis / Treatment
+    recommended_rest_days: Mapped[Optional[int]] = mapped_column(nullable=True)
+    start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    end_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    specific_dates: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array of "YYYY-MM-DD"
+    remarks: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    doctor_name: Mapped[Optional[str]] = mapped_column(String(150), nullable=True)
+    license_no: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    patient: Mapped["Patient"] = relationship(back_populates="medical_certificates")
 
 class Referral(Base):
     __tablename__ = "referrals"
