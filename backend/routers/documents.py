@@ -26,7 +26,7 @@ CLINIC_NAME_EN = "Hani Dental Clinic"
 CLINIC_PHONE = "0911828262"
 CLINIC_ADDRESS = "Bole Mikael, Addis Ababa"
 DOCTOR_NAME = "Dr. Dawit Ayalew"
-DOCTOR_LICENSE = "EFDA/MED/48291"
+DOCTOR_LICENSE = "2026/AA/PROF/24321"
 
 
 def get_db():

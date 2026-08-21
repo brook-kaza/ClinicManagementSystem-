@@ -225,7 +225,7 @@ def create_medical_certificate(db: Session, mc: schemas.MedicalCertificateCreate
         **data,
         patient_id=patient_id,
         doctor_name=doctor_name or "Dr. Dawit Ayalew",
-        license_no=license_no or "EFDA/MED/48291"
+        license_no=license_no or "2026/AA/PROF/24321"
     )
     db.add(db_mc)
     db.commit()
