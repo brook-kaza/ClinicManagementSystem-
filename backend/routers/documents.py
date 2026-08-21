@@ -481,9 +481,10 @@ def _build_medical_certificate_html(mc: models.MedicalCertificate, patient: mode
 
     body {{
         font-family: Helvetica, Arial, sans-serif;
-        color: #111827;
-        font-size: 8.5pt;
-        line-height: 1.35;
+        color: #000000;
+        font-size: 10pt;
+        line-height: 1.4;
+        font-weight: 600;
     }}
 
     /* ── CLINIC HEADER ─────────────────────────────────────── */
@@ -492,26 +493,27 @@ def _build_medical_certificate_html(mc: models.MedicalCertificate, patient: mode
         margin-bottom: 10pt;
     }}
     .clinic-name {{
-        font-size: 15pt;
-        font-weight: bold;
-        color: #111827;
+        font-size: 17pt;
+        font-weight: 900;
+        color: #000000;
         letter-spacing: 0.5px;
         text-transform: uppercase;
         margin-bottom: 2pt;
     }}
     .clinic-contact {{
-        font-size: 8.5pt;
-        color: #374151;
+        font-size: 9.5pt;
+        color: #000000;
+        font-weight: 600;
     }}
 
     /* ── DOCUMENT TITLE ────────────────────────────────────── */
     .doc-title {{
         text-align: center;
-        font-size: 12pt;
-        font-weight: bold;
+        font-size: 14pt;
+        font-weight: 900;
         text-transform: uppercase;
         letter-spacing: 1.5px;
-        color: #111827;
+        color: #000000;
         margin-bottom: 10pt;
     }}
 
@@ -519,73 +521,76 @@ def _build_medical_certificate_html(mc: models.MedicalCertificate, patient: mode
     .cert-table {{
         width: 100%;
         border-collapse: collapse;
-        border: 0.75pt solid #9ca3af;
+        border: 1.25pt solid #000000;
         margin-bottom: 1pt;
     }}
     .cert-table td {{
-        border: 0.75pt solid #9ca3af;
-        padding: 4pt 8pt;
+        border: 1pt solid #333333;
+        padding: 5pt 8pt;
         vertical-align: middle;
-        font-size: 8.5pt;
+        font-size: 10pt;
     }}
     .lbl-col {{
         width: 38%;
-        color: #374151;
-        font-weight: normal;
+        color: #000000;
+        font-weight: 700;
     }}
     .val-col {{
         width: 62%;
-        color: #111827;
-        font-weight: bold;
+        color: #000000;
+        font-weight: 900;
     }}
 
     /* ── INTERMEDIATE TEXT LABELS ──────────────────────────── */
     .sec-label {{
-        font-size: 8.5pt;
-        color: #1f2937;
+        font-size: 10pt;
+        color: #000000;
         margin-top: 6pt;
         margin-bottom: 2.5pt;
-        font-weight: normal;
+        font-weight: 700;
     }}
 
     /* ── BOXED TEXT AREAS (Diagnosis, Remarks) ─────────────── */
     .boxed-area {{
         width: 100%;
         border-collapse: collapse;
-        border: 0.75pt solid #9ca3af;
+        border: 1.25pt solid #000000;
         margin-bottom: 1pt;
     }}
     .boxed-area td {{
-        border: 0.75pt solid #9ca3af;
-        padding: 5pt 8pt;
+        border: 1pt solid #333333;
+        padding: 6pt 8pt;
         min-height: 22pt;
-        font-size: 8.5pt;
+        font-size: 10pt;
         vertical-align: top;
-        color: #111827;
+        color: #000000;
+        font-weight: 700;
     }}
 
     /* ── SIGN-OFF TABLE ────────────────────────────────────── */
     .sign-table {{
         width: 100%;
         border-collapse: collapse;
-        border: 0.75pt solid #9ca3af;
+        border: 1.25pt solid #000000;
         margin-top: 8pt;
         margin-bottom: 1pt;
     }}
     .sign-table td {{
-        border: 0.75pt solid #9ca3af;
-        padding: 4.5pt 8pt;
+        border: 1pt solid #333333;
+        padding: 5pt 8pt;
         vertical-align: middle;
-        font-size: 8.5pt;
+        font-size: 10pt;
+        font-weight: 700;
     }}
 
     /* ── FOOTER NOTE ───────────────────────────────────────── */
     .footer-note {{
         text-align: center;
-        font-size: 7.5pt;
-        color: #4b5563;
+        font-size: 8.5pt;
+        color: #000000;
         font-style: italic;
         margin-top: 8pt;
+        font-weight: 600;
     }}
 </style>
 </head>
