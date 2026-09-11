@@ -71,12 +71,11 @@ def get_current_user(request: Request, token: Optional[str] = Depends(oauth2_sch
         headers={"WWW-Authenticate": "Bearer"},
     )
     
-    # Priority 1: Check Secure HttpOnly Cookie
     cookie_token = request.cookies.get("access_token")
     if cookie_token and cookie_token.startswith("Bearer "):
         cookie_token = cookie_token.removeprefix("Bearer ")
         
-    actual_token = cookie_token or token
+    actual_token = token or cookie_token
     
     if not actual_token:
         raise credentials_exception
@@ -111,3 +110,8 @@ class RoleChecker:
                 detail=f"Operation not permitted for role: {current_user.role}"
             )
         return current_user
+
+# --- Reusable Role Guards ---
+admin_only = RoleChecker(["Admin"])
+clinical_staff = RoleChecker(["Admin", "Dentist"])  # Clinical operations — no receptionist
+all_staff = RoleChecker(["Admin", "Dentist", "Receptionist"])  # General operations

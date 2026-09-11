@@ -20,10 +20,27 @@ const PatientBilling = ({ patientId }) => {
     const [invoiceItems, setInvoiceItems] = useState([{ ...emptyItem }]);
     const [newPayment, setNewPayment] = useState({ amount_paid: '', payment_method: 'Cash' });
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+    const [doctors, setDoctors] = useState([]);
+    const [selectedDoctorId, setSelectedDoctorId] = useState('');
 
     useEffect(() => {
         if (patientId) fetchInvoices();
+        fetchDoctors();
     }, [patientId]);
+
+    const fetchDoctors = async () => {
+        try {
+            const res = await api.get('/users/doctors');
+            setDoctors(res.data);
+            if (user?.role === 'Dentist') {
+                setSelectedDoctorId(String(user.id));
+            } else if (res.data.length > 0 && !selectedDoctorId) {
+                setSelectedDoctorId(String(res.data[0].id));
+            }
+        } catch (err) {
+            console.error("Failed to load doctors", err);
+        }
+    };
 
     const fetchInvoices = async () => {
         setLoading(true);
@@ -67,8 +84,15 @@ const PatientBilling = ({ patientId }) => {
             return;
         }
 
+        const docId = user?.role === 'Dentist' ? user.id : parseInt(selectedDoctorId);
+        if (!docId) {
+            toast.error("Please select a treating doctor for this invoice.");
+            return;
+        }
+
         try {
             const payload = {
+                doctor_id: docId,
                 items: validItems.map(item => ({
                     description: item.description.trim(),
                     quantity: 1,
@@ -198,7 +222,7 @@ const PatientBilling = ({ patientId }) => {
                             <div key={invoice.id} className="bg-white border border-zinc-200 rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow">
                                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                                     <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
+                                        <div className="flex flex-wrap items-center gap-3 mb-2">
                                             <h4 className="font-bold text-zinc-900 text-lg flex items-center gap-2">
                                                 <FileText className="w-4 h-4 text-indigo-500" />
                                                 {invoice.description}
@@ -209,6 +233,15 @@ const PatientBilling = ({ patientId }) => {
                                                 }`}>
                                                 {invoice.status}
                                             </span>
+                                            {(() => {
+                                                const doc = doctors.find(d => d.id === invoice.doctor_id);
+                                                const docName = doc ? (doc.full_name || doc.username) : (invoice.doctor_id ? `Dr. #${invoice.doctor_id}` : null);
+                                                return docName ? (
+                                                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md">
+                                                        Treating: {docName}
+                                                    </span>
+                                                ) : null;
+                                            })()}
                                         </div>
                                         <p className="text-xs font-bold text-zinc-400 flex items-center gap-1.5 uppercase tracking-wider mb-4">
                                             <Clock className="w-3.5 h-3.5" />
@@ -328,6 +361,32 @@ const PatientBilling = ({ patientId }) => {
                         <p className="text-sm text-zinc-400 mb-5">Add each treatment/service as a separate line item.</p>
                         
                         <form onSubmit={handleCreateInvoice} className="space-y-4">
+                            {/* Doctor Selection */}
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-1.5">
+                                    Treating Doctor <span className="text-red-500">*</span>
+                                </label>
+                                {user?.role === 'Dentist' ? (
+                                    <div className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-zinc-700">
+                                        {user.full_name || user.username}
+                                    </div>
+                                ) : (
+                                    <select
+                                        required
+                                        value={selectedDoctorId}
+                                        onChange={e => setSelectedDoctorId(e.target.value)}
+                                        className="w-full bg-white border border-zinc-200 rounded-xl px-4 py-2.5 text-sm font-semibold text-zinc-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                                    >
+                                        <option value="" disabled>Select Treating Doctor...</option>
+                                        {doctors.map(doc => (
+                                            <option key={doc.id} value={doc.id}>
+                                                {doc.full_name ? `${doc.full_name} (${doc.role})` : `${doc.username} (${doc.role})`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+
                             {/* Line Items */}
                             <div className="space-y-3">
                                 {invoiceItems.map((item, idx) => (

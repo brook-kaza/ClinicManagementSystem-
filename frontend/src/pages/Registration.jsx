@@ -4,8 +4,10 @@ import { UserPlus, Activity, Phone, CreditCard, AlertCircle, ChevronRight, User,
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 const Registration = () => {
+    const { user } = useAuth();
     const [formData, setFormData] = useState({
         full_name: '',
         phone: '',
@@ -35,7 +37,12 @@ const Registration = () => {
             const response = await api.post('/patients', submissionData);
             toast.success(`Patient ${response.data.full_name} registered successfully!`);
             setFormData({ full_name: '', phone: '', age: '', sex: '', address: '', tin_number: '', medical_alerts: '' });
-            setTimeout(() => navigate(`/hub/${response.data.id}`), 1200);
+            
+            if (user?.role === 'Receptionist') {
+                setTimeout(() => navigate(`/billing/${response.data.id}`), 1200);
+            } else {
+                setTimeout(() => navigate(`/hub/${response.data.id}`), 1200);
+            }
 
         } catch (error) {
             const detail = error.response?.data?.detail;

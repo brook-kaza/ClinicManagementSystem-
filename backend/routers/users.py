@@ -14,6 +14,17 @@ router = APIRouter(
 
 admin_only = RoleChecker(["Admin"])
 
+@router.get("/doctors", response_model=List[schemas.UserRead])
+def read_doctors(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_active_user)
+):
+    """List all active doctors (Admin and Dentist) for appointment booking, billing, and report filtering."""
+    return db.query(models.User).filter(
+        models.User.is_active == True,
+        models.User.role.in_(["Admin", "Dentist"])
+    ).order_by(models.User.full_name).all()
+
 @router.get("", response_model=List[schemas.UserRead])
 def read_users(
     skip: int = 0, limit: int = 100, 
@@ -29,7 +40,12 @@ def create_staff_user(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(admin_only)
 ):
-    """Admin-only: Create a new staff account (Receptionist or additional Admin)."""
+    """Admin-only: Create a new staff account (Receptionist, Dentist, or additional Admin)."""
+    # Validate role
+    valid_roles = ["Admin", "Dentist", "Receptionist"]
+    if user.role not in valid_roles:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}")
+    
     db_user = crud.get_user_by_username(db, username=user.username)
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -63,6 +79,11 @@ def update_user_role(
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate role if provided
+    valid_roles = ["Admin", "Dentist", "Receptionist"]
+    if user_update.role is not None and user_update.role not in valid_roles:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}")
         
     # Prevent admin from deactivating themselves or changing their own role
     if db_user.id == current_user.id:

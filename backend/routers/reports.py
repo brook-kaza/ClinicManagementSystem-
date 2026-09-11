@@ -29,18 +29,26 @@ admin_only = RoleChecker(["Admin", "Receptionist", "Dentist"])
 def get_monthly_morbidity_report(
     month: int = Query(..., ge=1, le=12, description="Month (1-12)"),
     year: int = Query(..., description="Year (YYYY)"),
+    doctor_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(admin_only)
 ):
     """Monthly Morbidity Report based on ICD-11 codes, grouped by age/sex."""
-    visits = db.query(models.Visit, models.Patient).join(
+    query = db.query(models.Visit, models.Patient).join(
         models.Patient, models.Visit.patient_id == models.Patient.id
     ).filter(
         extract('month', models.Visit.visit_date) == month,
         extract('year', models.Visit.visit_date) == year,
         models.Visit.primary_diagnosis.isnot(None),
         models.Visit.primary_diagnosis != ""
-    ).all()
+    )
+    
+    # Dentist sees only their own; Admin can optionally filter by doctor_id
+    target_doc = current_user.id if current_user.role == "Dentist" else (doctor_id if current_user.role == "Admin" else None)
+    if target_doc:
+        query = query.filter(models.Visit.doctor_id == target_doc)
+    
+    visits = query.all()
 
     age_buckets_template = {
         "<1yr": 0, "1-4yr": 0, "5-14yr": 0,
@@ -99,6 +107,7 @@ def get_monthly_morbidity_report(
 @router.get("/daily-income", response_model=Dict[str, Any])
 def get_daily_income_report(
     report_date: str = Query(..., description="Date in YYYY-MM-DD format"),
+    doctor_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(admin_only)
 ):
@@ -111,13 +120,20 @@ def get_daily_income_report(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
 
-    payments = (
+    payments_query = (
         db.query(models.Payment)
         .options(joinedload(models.Payment.invoice).joinedload(models.Invoice.patient))
         .filter(cast(models.Payment.payment_date, Date) == target_date)
-        .order_by(models.Payment.payment_date)
-        .all()
     )
+    
+    # Dentist sees only payments from their own invoices; Admin can filter by doctor_id
+    target_doc = current_user.id if current_user.role == "Dentist" else (doctor_id if current_user.role == "Admin" else None)
+    if target_doc:
+        payments_query = payments_query.join(models.Invoice).filter(
+            models.Invoice.doctor_id == target_doc
+        )
+    
+    payments = payments_query.order_by(models.Payment.payment_date).all()
 
     method_totals: Dict[str, float] = defaultdict(float)
     transactions = []
@@ -153,6 +169,7 @@ def get_daily_income_report(
 @router.get("/monthly-revenue", response_model=Dict[str, Any])
 def get_monthly_revenue_report(
     year: int = Query(..., description="Year (YYYY)"),
+    doctor_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(admin_only)
 ):
@@ -161,22 +178,35 @@ def get_monthly_revenue_report(
     including outstanding balance and invoice count per month.
     """
     monthly_data = []
+    
+    target_doc = current_user.id if current_user.role == "Dentist" else (doctor_id if current_user.role == "Admin" else None)
 
     for month_num in range(1, 13):
-        billed = db.query(func.coalesce(func.sum(models.Invoice.total_amount), 0)).filter(
+        billed_query = db.query(func.coalesce(func.sum(models.Invoice.total_amount), 0)).filter(
             extract('month', models.Invoice.created_at) == month_num,
             extract('year', models.Invoice.created_at) == year
-        ).scalar() or 0.0
+        )
+        if target_doc:
+            billed_query = billed_query.filter(models.Invoice.doctor_id == target_doc)
+        billed = billed_query.scalar() or 0.0
 
-        collected = db.query(func.coalesce(func.sum(models.Payment.amount_paid), 0)).filter(
+        collected_query = db.query(func.coalesce(func.sum(models.Payment.amount_paid), 0)).join(
+            models.Invoice, models.Payment.invoice_id == models.Invoice.id
+        ).filter(
             extract('month', models.Payment.payment_date) == month_num,
             extract('year', models.Payment.payment_date) == year
-        ).scalar() or 0.0
+        )
+        if target_doc:
+            collected_query = collected_query.filter(models.Invoice.doctor_id == target_doc)
+        collected = collected_query.scalar() or 0.0
 
-        invoice_count = db.query(func.count(models.Invoice.id)).filter(
+        invoice_count_query = db.query(func.count(models.Invoice.id)).filter(
             extract('month', models.Invoice.created_at) == month_num,
             extract('year', models.Invoice.created_at) == year
-        ).scalar() or 0
+        )
+        if target_doc:
+            invoice_count_query = invoice_count_query.filter(models.Invoice.doctor_id == target_doc)
+        invoice_count = invoice_count_query.scalar() or 0
 
         monthly_data.append({
             "month": month_num,
@@ -206,6 +236,7 @@ def get_monthly_revenue_report(
 
 @router.get("/patient-statistics", response_model=Dict[str, Any])
 def get_patient_statistics(
+    doctor_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(admin_only)
 ):
@@ -214,16 +245,43 @@ def get_patient_statistics(
     and month-by-month new registrations + visits for the current year.
     """
     current_year = datetime.now().year
+    target_doc = current_user.id if current_user.role == "Dentist" else (doctor_id if current_user.role == "Admin" else None)
 
-    total_patients = db.query(func.count(models.Patient.id)).scalar() or 0
-    total_visits = db.query(func.count(models.Visit.id)).scalar() or 0
+    if target_doc:
+        from sqlalchemy import distinct
+        # Patients this doctor has seen
+        total_patients = db.query(func.count(distinct(models.Visit.patient_id))).filter(
+            models.Visit.doctor_id == target_doc
+        ).scalar() or 0
+    else:
+        total_patients = db.query(func.count(models.Patient.id)).scalar() or 0
+    
+    total_visits_query = db.query(func.count(models.Visit.id))
+    if target_doc:
+        total_visits_query = total_visits_query.filter(models.Visit.doctor_id == target_doc)
+    total_visits = total_visits_query.scalar() or 0
 
     # Sex breakdown
-    sex_rows = db.query(models.Patient.sex, func.count(models.Patient.id)).group_by(models.Patient.sex).all()
+    if target_doc:
+        from sqlalchemy import distinct
+        patient_ids_subq = db.query(distinct(models.Visit.patient_id)).filter(
+            models.Visit.doctor_id == target_doc
+        ).subquery()
+        sex_rows = db.query(models.Patient.sex, func.count(models.Patient.id)).filter(
+            models.Patient.id.in_(db.query(patient_ids_subq))
+        ).group_by(models.Patient.sex).all()
+    else:
+        sex_rows = db.query(models.Patient.sex, func.count(models.Patient.id)).group_by(models.Patient.sex).all()
     sex_distribution = {(row[0] or "Unknown"): row[1] for row in sex_rows}
 
     # Age distribution
-    all_ages = db.query(models.Patient.age).all()
+    if is_dentist:
+        all_ages = db.query(models.Patient.age).filter(
+            models.Patient.id.in_(db.query(patient_ids_subq))
+        ).all()
+    else:
+        all_ages = db.query(models.Patient.age).all()
+    
     age_buckets = {"<18": 0, "18-30": 0, "31-50": 0, "51-65": 0, ">65": 0, "Unknown": 0}
     for (age,) in all_ages:
         if age is None:
@@ -247,10 +305,15 @@ def get_patient_statistics(
             extract('month', models.Patient.created_at) == month_num,
             extract('year', models.Patient.created_at) == current_year
         ).scalar() or 0
-        vis_count = db.query(func.count(models.Visit.id)).filter(
+        
+        vis_query = db.query(func.count(models.Visit.id)).filter(
             extract('month', models.Visit.visit_date) == month_num,
             extract('year', models.Visit.visit_date) == current_year
-        ).scalar() or 0
+        )
+        if target_doc:
+            vis_query = vis_query.filter(models.Visit.doctor_id == target_doc)
+        vis_count = vis_query.scalar() or 0
+        
         monthly_registrations.append({"month": month_num, "count": reg_count})
         monthly_visits.append({"month": month_num, "count": vis_count})
 
@@ -271,6 +334,7 @@ def get_patient_statistics(
 
 @router.get("/outstanding-payments", response_model=Dict[str, Any])
 def get_outstanding_payments(
+    doctor_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(admin_only)
 ):
@@ -280,16 +344,21 @@ def get_outstanding_payments(
     """
     today = date_type.today()
 
-    unpaid_invoices = (
+    unpaid_query = (
         db.query(models.Invoice)
         .options(
             joinedload(models.Invoice.patient),
             joinedload(models.Invoice.payments),
         )
         .filter(models.Invoice.status.in_(["Unpaid", "Partially Paid"]))
-        .order_by(models.Invoice.created_at.asc())
-        .all()
     )
+    
+    # Dentist sees only their own; Admin can filter by doctor_id
+    target_doc = current_user.id if current_user.role == "Dentist" else (doctor_id if current_user.role == "Admin" else None)
+    if target_doc:
+        unpaid_query = unpaid_query.filter(models.Invoice.doctor_id == target_doc)
+    
+    unpaid_invoices = unpaid_query.order_by(models.Invoice.created_at.asc()).all()
 
     records = []
     total_outstanding = 0.0

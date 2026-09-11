@@ -40,6 +40,8 @@ def update_user_details(db: Session, user: models.User, user_update: schemas.Use
         user.role = user_update.role
     if user_update.is_active is not None:
         user.is_active = user_update.is_active
+    if user_update.license_no is not None:
+        user.license_no = user_update.license_no
     db.commit()
     db.refresh(user)
     return user
@@ -159,20 +161,31 @@ def update_patient_consent(db: Session, patient_id: int, consent_update: schemas
 
 # --- Visit CRUD ---
 
-def get_patient_visits(db: Session, patient_id: int) -> List[models.Visit]:
-    return db.query(models.Visit).filter(models.Visit.patient_id == patient_id).order_by(models.Visit.visit_date.desc()).all()
+def get_patient_visits(db: Session, patient_id: int, doctor_id: int = None) -> List[models.Visit]:
+    query = db.query(models.Visit).filter(models.Visit.patient_id == patient_id)
+    if doctor_id:
+        query = query.filter(models.Visit.doctor_id == doctor_id)
+    return query.order_by(models.Visit.visit_date.desc()).all()
 
 def get_visit(db: Session, visit_id: int) -> Optional[models.Visit]:
     return db.query(models.Visit).filter(models.Visit.id == visit_id).first()
 
 def create_patient_visit(
-    db: Session, visit: schemas.VisitCreate, patient_id: int
+    db: Session, visit: schemas.VisitCreate, patient_id: int, doctor_id: int = None
 ) -> models.Visit:
     visit_dict = visit.model_dump(exclude_unset=True)
     if visit_dict.get("visit_consent", False) and "visit_consent_time" not in visit_dict:
         visit_dict["visit_consent_time"] = models.get_local_time_eat()
+    
+    # Set doctor_id: use explicit param, then schema value, then None
+    if doctor_id:
+        visit_dict["doctor_id"] = doctor_id
+    elif "doctor_id" not in visit_dict or not visit_dict.get("doctor_id"):
+        visit_dict.pop("doctor_id", None)
         
     db_visit = models.Visit(**visit_dict, patient_id=patient_id)
+    if doctor_id and "doctor_id" not in visit_dict:
+        db_visit.doctor_id = doctor_id
     db.add(db_visit)
     db.commit()
     db.refresh(db_visit)
@@ -190,14 +203,14 @@ def update_visit(db: Session, db_visit: models.Visit, visit_update: schemas.Visi
 
 # --- Clinical Documents CRUD ---
 
-def create_prescription(db: Session, prescription: schemas.PrescriptionCreate, patient_id: int) -> models.Prescription:
-    db_prescription = models.Prescription(**prescription.model_dump(), patient_id=patient_id)
+def create_prescription(db: Session, prescription: schemas.PrescriptionCreate, patient_id: int, doctor_id: int = None) -> models.Prescription:
+    db_prescription = models.Prescription(**prescription.model_dump(), patient_id=patient_id, doctor_id=doctor_id)
     db.add(db_prescription)
     db.commit()
     db.refresh(db_prescription)
     return db_prescription
 
-def create_sick_leave(db: Session, sick_leave: schemas.SickLeaveCreate, patient_id: int) -> models.SickLeave:
+def create_sick_leave(db: Session, sick_leave: schemas.SickLeaveCreate, patient_id: int, doctor_id: int = None) -> models.SickLeave:
     data = sick_leave.model_dump()
     # Serialize specific_dates list to JSON string for Text column storage
     if data.get('specific_dates'):
@@ -205,13 +218,13 @@ def create_sick_leave(db: Session, sick_leave: schemas.SickLeaveCreate, patient_
         data['specific_dates'] = json.dumps(data['specific_dates'])
     else:
         data['specific_dates'] = None
-    db_sick_leave = models.SickLeave(**data, patient_id=patient_id)
+    db_sick_leave = models.SickLeave(**data, patient_id=patient_id, doctor_id=doctor_id)
     db.add(db_sick_leave)
     db.commit()
     db.refresh(db_sick_leave)
     return db_sick_leave
 
-def create_medical_certificate(db: Session, mc: schemas.MedicalCertificateCreate, patient_id: int, doctor_name: Optional[str] = None, license_no: Optional[str] = None) -> models.MedicalCertificate:
+def create_medical_certificate(db: Session, mc: schemas.MedicalCertificateCreate, patient_id: int, doctor_id: int = None, doctor_name: Optional[str] = None, license_no: Optional[str] = None) -> models.MedicalCertificate:
     data = mc.model_dump()
     if data.get('specific_dates'):
         import json
@@ -224,6 +237,7 @@ def create_medical_certificate(db: Session, mc: schemas.MedicalCertificateCreate
     db_mc = models.MedicalCertificate(
         **data,
         patient_id=patient_id,
+        doctor_id=doctor_id,
         doctor_name=doctor_name or "Dr. Dawit Ayalew",
         license_no=license_no or "2026/AA/PROF/24321"
     )
@@ -232,8 +246,8 @@ def create_medical_certificate(db: Session, mc: schemas.MedicalCertificateCreate
     db.refresh(db_mc)
     return db_mc
 
-def create_referral(db: Session, referral: schemas.ReferralCreate, patient_id: int) -> models.Referral:
-    db_referral = models.Referral(**referral.model_dump(), patient_id=patient_id)
+def create_referral(db: Session, referral: schemas.ReferralCreate, patient_id: int, doctor_id: int = None) -> models.Referral:
+    db_referral = models.Referral(**referral.model_dump(), patient_id=patient_id, doctor_id=doctor_id)
     db.add(db_referral)
     db.commit()
     db.refresh(db_referral)
@@ -241,11 +255,14 @@ def create_referral(db: Session, referral: schemas.ReferralCreate, patient_id: i
 
 # --- Billing CRUD ---
 
-def get_patient_invoices(db: Session, patient_id: int) -> List[models.Invoice]:
-    return db.query(models.Invoice).filter(models.Invoice.patient_id == patient_id).order_by(models.Invoice.created_at.desc()).all()
+def get_patient_invoices(db: Session, patient_id: int, doctor_id: int = None) -> List[models.Invoice]:
+    query = db.query(models.Invoice).filter(models.Invoice.patient_id == patient_id)
+    if doctor_id:
+        query = query.filter(models.Invoice.doctor_id == doctor_id)
+    return query.order_by(models.Invoice.created_at.desc()).all()
 
-def create_invoice(db: Session, invoice: schemas.InvoiceCreate, patient_id: int) -> models.Invoice:
-    invoice_data = invoice.model_dump(exclude={"items"})
+def create_invoice(db: Session, invoice: schemas.InvoiceCreate, patient_id: int, doctor_id: int = None) -> models.Invoice:
+    invoice_data = invoice.model_dump(exclude={"items", "doctor_id"})
     
     # If items are provided, auto-calculate total and description
     items_data = invoice.items or []
@@ -264,7 +281,10 @@ def create_invoice(db: Session, invoice: schemas.InvoiceCreate, patient_id: int)
     if not invoice_data.get("description"):
         invoice_data["description"] = "General Treatment"
     
-    db_invoice = models.Invoice(**invoice_data, patient_id=patient_id)
+    # Use doctor_id from param (preferred), then from schema, then None
+    effective_doctor_id = doctor_id or invoice.doctor_id
+    
+    db_invoice = models.Invoice(**invoice_data, patient_id=patient_id, doctor_id=effective_doctor_id)
     db.add(db_invoice)
     db.flush()  # Get the invoice ID before adding items
     
@@ -307,14 +327,17 @@ def create_payment(db: Session, payment: schemas.PaymentCreate, invoice_id: int,
 from sqlalchemy.orm import Session, joinedload
 # ...
 
-def get_appointments(db: Session, start: datetime.datetime, end: datetime.datetime) -> List[models.Appointment]:
-    return db.query(models.Appointment).options(
+def get_appointments(db: Session, start: datetime.datetime, end: datetime.datetime, doctor_id: Optional[int] = None) -> List[models.Appointment]:
+    query = db.query(models.Appointment).options(
         joinedload(models.Appointment.patient),
         joinedload(models.Appointment.doctor)
     ).filter(
         models.Appointment.start_time >= start,
         models.Appointment.end_time <= end
-    ).all()
+    )
+    if doctor_id:
+        query = query.filter(models.Appointment.doctor_id == doctor_id)
+    return query.all()
 
 def get_patient_appointments(db: Session, patient_id: int) -> List[models.Appointment]:
     return db.query(models.Appointment).options(

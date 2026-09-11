@@ -7,7 +7,7 @@ import models
 import os
 import uuid
 from database import get_db
-from auth import get_current_active_user, RoleChecker
+from auth import get_current_active_user, RoleChecker, clinical_staff
 
 router = APIRouter(
     prefix="/patients/{patient_id}/visits",
@@ -19,7 +19,7 @@ def create_visit_for_patient(
     patient_id: int, 
     visit: schemas.VisitCreate, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(clinical_staff)
 ):
     # Verify patient exists
     db_patient = crud.get_patient(db, patient_id=patient_id)
@@ -27,27 +27,32 @@ def create_visit_for_patient(
         raise HTTPException(status_code=404, detail="Patient not found")
     
     return crud.create_patient_visit(
-        db=db, visit=visit, patient_id=patient_id
+        db=db, visit=visit, patient_id=patient_id, doctor_id=current_user.id
     )
 
 @router.get("", response_model=List[schemas.VisitRead])
 def read_visits(
     patient_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(clinical_staff)
 ):
-    return crud.get_patient_visits(db, patient_id=patient_id)
+    # Dentist sees only their own visits; Admin sees all
+    doctor_filter = current_user.id if current_user.role == "Dentist" else None
+    return crud.get_patient_visits(db, patient_id=patient_id, doctor_id=doctor_filter)
 
 @router.get("/{visit_id}", response_model=schemas.VisitRead)
 def read_visit(
     patient_id: int, 
     visit_id: int, 
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(clinical_staff)
 ):
     db_visit = crud.get_visit(db, visit_id=visit_id)
     if db_visit is None or db_visit.patient_id != patient_id:
         raise HTTPException(status_code=404, detail="Visit not found")
+    # Dentist can only view their own visits
+    if current_user.role == "Dentist" and db_visit.doctor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied to this visit")
     return db_visit
 
 @router.patch("/{visit_id}", response_model=schemas.VisitRead)
@@ -56,11 +61,14 @@ def update_visit(
     visit_id: int,
     visit_update: schemas.VisitUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(clinical_staff)
 ):
     db_visit = crud.get_visit(db, visit_id=visit_id)
     if db_visit is None or db_visit.patient_id != patient_id:
         raise HTTPException(status_code=404, detail="Visit not found")
+    # Dentist can only update their own visits
+    if current_user.role == "Dentist" and db_visit.doctor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied to this visit")
     
     return crud.update_visit(db=db, db_visit=db_visit, visit_update=visit_update)
 
@@ -70,7 +78,7 @@ async def upload_xrays(
     visit_id: int,
     files: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_active_user)
+    current_user: models.User = Depends(clinical_staff)
 ):
     """Upload one or more X-ray images for a clinical visit."""
     import logging

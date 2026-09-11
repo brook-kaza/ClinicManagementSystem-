@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, User, Clock, CheckCircle, Search, ChevronRight, AlertCircle, Calendar as CalendarIcon, Edit3, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 const BookingModal = ({ 
     isOpen, 
@@ -11,6 +12,7 @@ const BookingModal = ({
     editingAppointment = null, // If provided, modal enters EDIT mode
     onDelete = null
 }) => {
+    const { user: currentUser } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [selectedPatient, setSelectedPatient] = useState(preselectedPatient);
@@ -58,13 +60,24 @@ const BookingModal = ({
     }, [isOpen, editingAppointment]);
 
     const fetchDoctors = async () => {
+        // Dentist role: only themselves, no API call needed
+        if (currentUser?.role === 'Dentist') {
+            setDoctors([currentUser]);
+            if (!editingAppointment) setSelectedDoctorId(String(currentUser.id));
+            return;
+        }
         try {
-            const res = await api.get('/users');
-            const filtered = res.data.filter(u => u.role === 'Dentist' || u.role === 'Admin');
-            setDoctors(filtered);
-            if (!editingAppointment && filtered.length > 0) setSelectedDoctorId(filtered[0].id);
+            const res = await api.get('/users/doctors');
+            setDoctors(res.data);
+            if (!editingAppointment && res.data.length > 0 && !selectedDoctorId) {
+                setSelectedDoctorId(String(res.data[0].id));
+            }
         } catch (err) {
             console.error("Fetch doctors failed:", err);
+            if (currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Dentist')) {
+                setDoctors([currentUser]);
+                if (!editingAppointment) setSelectedDoctorId(String(currentUser.id));
+            }
         }
     };
 

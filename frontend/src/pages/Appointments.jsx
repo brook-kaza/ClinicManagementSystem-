@@ -17,25 +17,32 @@ const Appointments = () => {
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState(null);
     const [selectedSlot, setSelectedSlot] = useState(null);
+    const [doctors, setDoctors] = useState([]);
+    const [filterDoctorId, setFilterDoctorId] = useState('');
 
     // Delete confirmation
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deletingAppointmentId, setDeletingAppointmentId] = useState(null);
 
     const calendarRef = useRef(null);
+    const currentRangeRef = useRef({ start: null, end: null });
 
     useEffect(() => {
-        fetchAppointments();
-    }, []);
+        if (user?.role !== 'Dentist') {
+            api.get('/users/doctors').then(res => setDoctors(res.data)).catch(console.error);
+        }
+    }, [user]);
 
-    const fetchAppointments = async (start, end) => {
+    const fetchAppointments = async (start, end, docId = filterDoctorId) => {
         if (!start || !end) return;
+        currentRangeRef.current = { start, end };
 
         setLoading(true);
         try {
-            const res = await api.get('/appointments', {
-                params: { start: start.toISOString(), end: end.toISOString() }
-            });
+            const params = { start: start.toISOString(), end: end.toISOString() };
+            if (docId) params.doctor_id = docId;
+
+            const res = await api.get('/appointments', { params });
             const formatted = res.data.map(app => {
                 const patientName = app.patient?.full_name || `Patient #${app.patient_id}`;
                 const drName = app.doctor?.full_name || app.doctor?.username || `Dr. ${app.doctor_id}`;
@@ -109,14 +116,41 @@ const Appointments = () => {
                     <h2 className="text-3xl font-bold text-zinc-900 font-heading tracking-tight mb-2 flex items-center gap-3">
                         <CalendarIcon className="w-8 h-8 text-indigo-600" /> Appointment Scheduler
                     </h2>
-                    <p className="text-zinc-500 font-medium">Manage clinical schedule and patient bookings efficiently.</p>
+                    <p className="text-zinc-500 font-medium">
+                        {user?.role === 'Dentist' ? 'Viewing your scheduled appointments and clinical bookings.' : 'Manage clinical schedule and patient bookings efficiently.'}
+                    </p>
                 </div>
-                <button 
-                    onClick={() => { setEditingAppointment(null); setShowBookingModal(true); }}
-                    className="flex items-center justify-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all focus-ring"
-                >
-                    <Plus className="w-5 h-5" /> Quick Booking
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                    {user?.role !== 'Dentist' && doctors.length > 0 && (
+                        <div className="flex items-center gap-2 bg-white border border-zinc-200 rounded-2xl px-3.5 py-2 shadow-sm">
+                            <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Doctor:</span>
+                            <select
+                                value={filterDoctorId}
+                                onChange={e => {
+                                    const newId = e.target.value;
+                                    setFilterDoctorId(newId);
+                                    if (currentRangeRef.current.start && currentRangeRef.current.end) {
+                                        fetchAppointments(currentRangeRef.current.start, currentRangeRef.current.end, newId);
+                                    }
+                                }}
+                                className="bg-transparent text-xs font-bold text-zinc-800 focus:outline-none cursor-pointer"
+                            >
+                                <option value="">All Doctors</option>
+                                {doctors.map(d => (
+                                    <option key={d.id} value={d.id}>
+                                        {d.full_name || d.username}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    <button 
+                        onClick={() => { setEditingAppointment(null); setShowBookingModal(true); }}
+                        className="flex items-center justify-center gap-2 px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all focus-ring"
+                    >
+                        <Plus className="w-5 h-5" /> Quick Booking
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white rounded-3xl border border-zinc-200 p-6 shadow-2xl shadow-zinc-200/50">

@@ -25,7 +25,8 @@ def read_patient_invoices(
     if not db_patient:
         raise HTTPException(status_code=404, detail="Patient not found")
         
-    return crud.get_patient_invoices(db, patient_id=patient_id)
+    doctor_id = current_user.id if current_user.role == "Dentist" else None
+    return crud.get_patient_invoices(db, patient_id=patient_id, doctor_id=doctor_id)
 
 @router.delete("/invoices/{invoice_id}")
 def delete_invoice(
@@ -69,7 +70,21 @@ def create_patient_invoice(
     if not db_patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     
-    return crud.create_invoice(db=db, invoice=invoice, patient_id=patient_id)
+    # For doctors (Admin/Dentist), auto-set doctor_id to themselves unless Admin explicitly specifies a doctor
+    if current_user.role == "Admin" and invoice.doctor_id:
+        doctor_id = invoice.doctor_id
+    elif current_user.role in ("Admin", "Dentist"):
+        doctor_id = current_user.id
+    else:
+        # Receptionist must specify which doctor performed the service
+        if not invoice.doctor_id:
+            raise HTTPException(status_code=400, detail="Treating doctor must be specified for invoice creation.")
+        doc = crud.get_user(db, user_id=invoice.doctor_id)
+        if not doc or doc.role not in ("Admin", "Dentist") or not doc.is_active:
+            raise HTTPException(status_code=400, detail="Invalid doctor selected.")
+        doctor_id = invoice.doctor_id
+    
+    return crud.create_invoice(db=db, invoice=invoice, patient_id=patient_id, doctor_id=doctor_id)
 
 @router.post("/invoices/{invoice_id}/payments", response_model=schemas.PaymentRead, status_code=201)
 def record_payment(

@@ -19,6 +19,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(200))
     role: Mapped[str] = mapped_column(String(50), default="Receptionist") # Admin, Dentist, Receptionist
     is_active: Mapped[bool] = mapped_column(default=True)
+    license_no: Mapped[Optional[str]] = mapped_column(String(100), default=None)
 
 class Patient(Base):
     __tablename__ = "patients"
@@ -80,6 +81,7 @@ class Visit(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    doctor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     visit_date: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
     chief_complaint: Mapped[Optional[str]] = mapped_column(String(500))
     doctors_notes: Mapped[Optional[str]] = mapped_column(Text)
@@ -99,6 +101,7 @@ class Visit(Base):
     visit_consent_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     patient: Mapped["Patient"] = relationship(back_populates="visits")
+    doctor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[doctor_id])
     xray_images: Mapped[List["XrayImage"]] = relationship(
         back_populates="visit", cascade="all, delete-orphan", order_by="XrayImage.uploaded_at"
     )
@@ -108,18 +111,21 @@ class Prescription(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    doctor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     visit_id: Mapped[Optional[int]] = mapped_column(ForeignKey("visits.id"))
     date_issued: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
     medications: Mapped[str] = mapped_column(Text)  # JSON string of medications
     instructions: Mapped[Optional[str]] = mapped_column(Text)
     
     patient: Mapped["Patient"] = relationship(back_populates="prescriptions")
+    doctor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[doctor_id])
 
 class SickLeave(Base):
     __tablename__ = "sick_leaves"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    doctor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     visit_id: Mapped[Optional[int]] = mapped_column(ForeignKey("visits.id"))
     date_issued: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
     start_date: Mapped[datetime] = mapped_column(DateTime)
@@ -129,12 +135,14 @@ class SickLeave(Base):
     specific_dates: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON array of "YYYY-MM-DD" strings for non-consecutive days
 
     patient: Mapped["Patient"] = relationship(back_populates="sick_leaves")
+    doctor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[doctor_id])
 
 class MedicalCertificate(Base):
     __tablename__ = "medical_certificates"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    doctor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     visit_id: Mapped[Optional[int]] = mapped_column(ForeignKey("visits.id"))
     date_issued: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
     date_examined: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
@@ -148,12 +156,14 @@ class MedicalCertificate(Base):
     license_no: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     patient: Mapped["Patient"] = relationship(back_populates="medical_certificates")
+    doctor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[doctor_id])
 
 class Referral(Base):
     __tablename__ = "referrals"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    doctor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     visit_id: Mapped[Optional[int]] = mapped_column(ForeignKey("visits.id"))
     date_issued: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
     referred_to: Mapped[str] = mapped_column(String(200)) # Clinic or Doctor name
@@ -161,18 +171,21 @@ class Referral(Base):
     clinical_summary: Mapped[Optional[str]] = mapped_column(Text)
 
     patient: Mapped["Patient"] = relationship(back_populates="referrals")
+    doctor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[doctor_id])
 
 class Invoice(Base):
     __tablename__ = "invoices"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"))
+    doctor_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), index=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=get_local_time_eat)
     description: Mapped[str] = mapped_column(String(255))
     total_amount: Mapped[float] = mapped_column()
     status: Mapped[str] = mapped_column(String(20), default="Unpaid") # Unpaid, Partially Paid, Paid
     
     patient: Mapped["Patient"] = relationship("Patient", back_populates="invoices")
+    doctor: Mapped[Optional["User"]] = relationship("User", foreign_keys=[doctor_id])
     payments: Mapped[List["Payment"]] = relationship("Payment", back_populates="invoice", cascade="all, delete-orphan")
     items: Mapped[List["InvoiceItem"]] = relationship("InvoiceItem", back_populates="invoice", cascade="all, delete-orphan")
 

@@ -17,11 +17,13 @@ router = APIRouter(
 def read_appointments(
     start: datetime = Query(...),
     end: datetime = Query(...),
+    doctor_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
-    """Fetch appointments in a given date range."""
-    return crud.get_appointments(db, start=start, end=end)
+    """Fetch appointments in a given date range. Dentist sees only their own; Admin/Receptionist can filter or see all."""
+    effective_doctor_id = current_user.id if current_user.role == "Dentist" else doctor_id
+    return crud.get_appointments(db, start=start, end=end, doctor_id=effective_doctor_id)
 
 @router.post("", response_model=schemas.AppointmentRead, status_code=201)
 def create_appointment(
@@ -30,6 +32,10 @@ def create_appointment(
     current_user: models.User = Depends(get_current_active_user)
 ):
     """Create a new appointment with conflict check."""
+    # For Dentist, always book under their own ID
+    if current_user.role == "Dentist":
+        appointment.doctor_id = current_user.id
+
     # Force incoming Pydantic timestamps to Naive to prevent Python TypeError crashes during naive-localtime comparison
     start_time_naive = appointment.start_time.replace(tzinfo=None)
     end_time_naive = appointment.end_time.replace(tzinfo=None)

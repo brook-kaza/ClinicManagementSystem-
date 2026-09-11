@@ -17,6 +17,7 @@ class UserBase(BaseModel):
     full_name: Optional[str] = Field(default=None, max_length=150)
     role: str = Field(default="Receptionist")
     is_active: bool = True
+    license_no: Optional[str] = Field(default=None, max_length=100)
 
 class UserCreate(UserBase):
     password: str = Field(min_length=6)
@@ -24,6 +25,7 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     role: Optional[str] = None
     is_active: Optional[bool] = None
+    license_no: Optional[str] = None
 
 class UserPasswordReset(BaseModel):
     new_password: str = Field(min_length=6)
@@ -64,7 +66,7 @@ class VisitBase(BaseModel):
     visit_consent_time: Optional[datetime] = None
 
 class VisitCreate(VisitBase):
-    pass
+    doctor_id: Optional[int] = None
 
 class VisitUpdate(BaseModel):
     visit_date: Optional[datetime] = None
@@ -93,6 +95,8 @@ class XrayImageRead(BaseModel):
 class VisitRead(VisitBase):
     id: int
     patient_id: int
+    doctor_id: Optional[int] = None
+    doctor: Optional[UserRead] = None
     xray_images: List[XrayImageRead] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -110,6 +114,7 @@ class PrescriptionCreate(PrescriptionBase):
 class PrescriptionRead(PrescriptionBase):
     id: int
     patient_id: int
+    doctor_id: Optional[int] = None
     date_issued: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -127,6 +132,7 @@ class SickLeaveCreate(SickLeaveBase):
 class SickLeaveRead(SickLeaveBase):
     id: int
     patient_id: int
+    doctor_id: Optional[int] = None
     date_issued: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -158,6 +164,7 @@ class MedicalCertificateCreate(MedicalCertificateBase):
 class MedicalCertificateRead(MedicalCertificateBase):
     id: int
     patient_id: int
+    doctor_id: Optional[int] = None
     date_issued: datetime
     doctor_name: Optional[str] = None
     license_no: Optional[str] = None
@@ -187,6 +194,7 @@ class ReferralCreate(ReferralBase):
 class ReferralRead(ReferralBase):
     id: int
     patient_id: int
+    doctor_id: Optional[int] = None
     date_issued: datetime
     model_config = ConfigDict(from_attributes=True)
 
@@ -230,10 +238,13 @@ class InvoiceBase(BaseModel):
 
 class InvoiceCreate(InvoiceBase):
     items: Optional[List[InvoiceItemCreate]] = None
+    doctor_id: Optional[int] = None  # Receptionist can specify which doctor the invoice belongs to
 
 class InvoiceRead(InvoiceBase):
     id: int
     patient_id: int
+    doctor_id: Optional[int] = None
+    doctor: Optional[UserRead] = None
     created_at: datetime
     status: str
     payments: List[PaymentRead] = []

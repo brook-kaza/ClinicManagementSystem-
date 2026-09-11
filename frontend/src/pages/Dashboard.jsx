@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Activity, Users, CalendarCheck, FileText, ArrowRight, UserPlus, Clock } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const isDentist = user?.role === 'Dentist';
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -23,10 +26,10 @@ const Dashboard = () => {
     }, []);
 
     const statCards = [
-        { title: 'Total Patients', value: stats?.metrics?.total_patients || 0, icon: <Users className="w-6 h-6 text-indigo-500" />, bg: 'bg-indigo-50', border: 'border-indigo-100' },
-        { title: 'Visits Today', value: stats?.metrics?.visits_today || 0, icon: <Clock className="w-6 h-6 text-emerald-500" />, bg: 'bg-emerald-50', border: 'border-emerald-100' },
-        { title: 'Prescriptions', value: stats?.metrics?.total_prescriptions || 0, icon: <Activity className="w-6 h-6 text-rose-500" />, bg: 'bg-rose-50', border: 'border-rose-100' },
-        { title: 'Referrals Issued', value: stats?.metrics?.total_referrals || 0, icon: <FileText className="w-6 h-6 text-amber-500" />, bg: 'bg-amber-50', border: 'border-amber-100' },
+        { title: isDentist ? 'My Patients' : 'Total Patients', value: stats?.metrics?.total_patients || 0, icon: <Users className="w-6 h-6 text-indigo-500" />, bg: 'bg-indigo-50', border: 'border-indigo-100' },
+        { title: isDentist ? 'My Visits Today' : 'Visits Today', value: stats?.metrics?.visits_today || 0, icon: <Clock className="w-6 h-6 text-emerald-500" />, bg: 'bg-emerald-50', border: 'border-emerald-100' },
+        { title: isDentist ? 'My Prescriptions' : 'Prescriptions', value: stats?.metrics?.total_prescriptions || 0, icon: <Activity className="w-6 h-6 text-rose-500" />, bg: 'bg-rose-50', border: 'border-rose-100' },
+        { title: isDentist ? 'My Referrals' : 'Referrals Issued', value: stats?.metrics?.total_referrals || 0, icon: <FileText className="w-6 h-6 text-amber-500" />, bg: 'bg-amber-50', border: 'border-amber-100' },
     ];
 
     if (loading) {

@@ -18,26 +18,75 @@ def get_dashboard_stats(
 ):
     today = date.today()
     
-    # Total Patients
-    total_patients = db.query(func.count(models.Patient.id)).scalar()
+    # --- Role-aware filtering ---
+    # Admin sees clinic-wide data; Dentist sees only their own; Receptionist sees general stats
+    is_dentist = current_user.role == "Dentist"
     
-    # Visits Today (Cross-platform date extraction)
-    visits_today = db.query(func.count(models.Visit.id)).filter(
-        cast(models.Visit.visit_date, Date) == today
-    ).scalar()
-    
-    # Total Prescriptions
-    total_prescriptions = db.query(func.count(models.Prescription.id)).scalar()
-    
-    # Total Referrals
-    total_referrals = db.query(func.count(models.Referral.id)).scalar()
-    
-    # Recent Patients
-    recent_patients = db.query(models.Patient).order_by(models.Patient.created_at.desc()).limit(5).all()
+    if is_dentist:
+        # Total unique patients this doctor has treated (via visits or appointments)
+        from sqlalchemy import distinct
+        patients_via_visits = db.query(distinct(models.Visit.patient_id)).filter(
+            models.Visit.doctor_id == current_user.id
+        ).subquery()
+        patients_via_appts = db.query(distinct(models.Appointment.patient_id)).filter(
+            models.Appointment.doctor_id == current_user.id
+        ).subquery()
+        # Union of both
+        total_patients = db.query(func.count(distinct(models.Patient.id))).filter(
+            models.Patient.id.in_(
+                db.query(patients_via_visits).union(db.query(patients_via_appts))
+            )
+        ).scalar() or 0
+        
+        # Visits today — only this doctor's
+        visits_today = db.query(func.count(models.Visit.id)).filter(
+            cast(models.Visit.visit_date, Date) == today,
+            models.Visit.doctor_id == current_user.id
+        ).scalar()
+        
+        # Prescriptions — only this doctor's
+        total_prescriptions = db.query(func.count(models.Prescription.id)).filter(
+            models.Prescription.doctor_id == current_user.id
+        ).scalar()
+        
+        # Referrals — only this doctor's
+        total_referrals = db.query(func.count(models.Referral.id)).filter(
+            models.Referral.doctor_id == current_user.id
+        ).scalar()
+        
+        # Recent Patients — patients with recent visits by this doctor
+        from sqlalchemy.orm import joinedload
+        recent_visits = db.query(models.Visit).options(
+            joinedload(models.Visit.patient)
+        ).filter(
+            models.Visit.doctor_id == current_user.id
+        ).order_by(models.Visit.visit_date.desc()).limit(5).all()
+        
+        recent_patients_ids = set()
+        recent_patients = []
+        for v in recent_visits:
+            if v.patient and v.patient.id not in recent_patients_ids:
+                recent_patients_ids.add(v.patient.id)
+                recent_patients.append(v.patient)
+    else:
+        # Admin / Receptionist — clinic-wide stats
+        total_patients = db.query(func.count(models.Patient.id)).scalar()
+        
+        visits_today = db.query(func.count(models.Visit.id)).filter(
+            cast(models.Visit.visit_date, Date) == today
+        ).scalar()
+        
+        total_prescriptions = db.query(func.count(models.Prescription.id)).scalar()
+        total_referrals = db.query(func.count(models.Referral.id)).scalar()
+        
+        recent_patients = db.query(models.Patient).order_by(models.Patient.created_at.desc()).limit(5).all()
     
     # Recent Visits (WITH Joined Load to fix N+1 query issue)
     from sqlalchemy.orm import joinedload
-    recent_visits = db.query(models.Visit).options(joinedload(models.Visit.patient)).order_by(models.Visit.visit_date.desc()).limit(5).all()
+    visits_query = db.query(models.Visit).options(joinedload(models.Visit.patient))
+    if is_dentist:
+        visits_query = visits_query.filter(models.Visit.doctor_id == current_user.id)
+    recent_visits = visits_query.order_by(models.Visit.visit_date.desc()).limit(5).all()
     
     # Compile a sorted feed of recent activity
     activity_feed = []

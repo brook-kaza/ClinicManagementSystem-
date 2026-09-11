@@ -5,7 +5,7 @@ import crud
 import schemas
 import models
 from database import SessionLocal
-from auth import get_current_active_user
+from auth import get_current_active_user, clinical_staff
 from datetime import datetime, timedelta
 from io import BytesIO
 
@@ -37,22 +37,23 @@ def get_db():
         db.close()
 
 
-@router.post("/patients/{patient_id}/prescriptions", response_model=schemas.PrescriptionRead)
-def create_prescription(patient_id: int, prescription: schemas.PrescriptionCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
-    return crud.create_prescription(db=db, prescription=prescription, patient_id=patient_id)
+@router.post("/patients/{patient_id}/prescriptions", response_model=schemas.PrescriptionRead, status_code=201)
+def create_prescription(patient_id: int, prescription: schemas.PrescriptionCreate, db: Session = Depends(get_db), current_user: models.User = Depends(clinical_staff)):
+    return crud.create_prescription(db=db, prescription=prescription, patient_id=patient_id, doctor_id=current_user.id)
 
-@router.post("/patients/{patient_id}/sick-leaves", response_model=schemas.SickLeaveRead)
-def create_sick_leave(patient_id: int, sick_leave: schemas.SickLeaveCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
-    return crud.create_sick_leave(db=db, sick_leave=sick_leave, patient_id=patient_id)
+@router.post("/patients/{patient_id}/sick-leaves", response_model=schemas.SickLeaveRead, status_code=201)
+def create_sick_leave(patient_id: int, sick_leave: schemas.SickLeaveCreate, db: Session = Depends(get_db), current_user: models.User = Depends(clinical_staff)):
+    return crud.create_sick_leave(db=db, sick_leave=sick_leave, patient_id=patient_id, doctor_id=current_user.id)
 
-@router.post("/patients/{patient_id}/medical-certificates", response_model=schemas.MedicalCertificateRead)
-def create_medical_certificate(patient_id: int, mc: schemas.MedicalCertificateCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
+@router.post("/patients/{patient_id}/medical-certificates", response_model=schemas.MedicalCertificateRead, status_code=201)
+def create_medical_certificate(patient_id: int, mc: schemas.MedicalCertificateCreate, db: Session = Depends(get_db), current_user: models.User = Depends(clinical_staff)):
     doctor_display = current_user.full_name or DOCTOR_NAME
-    return crud.create_medical_certificate(db=db, mc=mc, patient_id=patient_id, doctor_name=doctor_display, license_no=DOCTOR_LICENSE)
+    doctor_license = current_user.license_no or DOCTOR_LICENSE
+    return crud.create_medical_certificate(db=db, mc=mc, patient_id=patient_id, doctor_id=current_user.id, doctor_name=doctor_display, license_no=doctor_license)
 
-@router.post("/patients/{patient_id}/referrals", response_model=schemas.ReferralRead)
-def create_referral(patient_id: int, referral: schemas.ReferralCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_active_user)):
-    return crud.create_referral(db=db, referral=referral, patient_id=patient_id)
+@router.post("/patients/{patient_id}/referrals", response_model=schemas.ReferralRead, status_code=201)
+def create_referral(patient_id: int, referral: schemas.ReferralCreate, db: Session = Depends(get_db), current_user: models.User = Depends(clinical_staff)):
+    return crud.create_referral(db=db, referral=referral, patient_id=patient_id, doctor_id=current_user.id)
 
 
 # ═══════════════════════════════════════════════════════════════════════════

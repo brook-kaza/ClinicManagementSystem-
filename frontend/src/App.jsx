@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Users, Search, Activity, Clock, LogOut, Shield, ChevronLeft, ChevronRight, FileText, Calendar } from 'lucide-react';
+import { Users, Search, Activity, Clock, LogOut, Shield, ChevronLeft, ChevronRight, FileText, Calendar, CreditCard, LayoutDashboard } from 'lucide-react';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
@@ -15,8 +15,8 @@ import PatientHistory from './pages/PatientHistory';
 import UserManagement from './pages/UserManagement';
 import Reports from './pages/Reports';
 import Appointments from './pages/Appointments';
+import BillingPage from './pages/BillingPage';
 import AccessDenied from './components/AccessDenied';
-import { LayoutDashboard } from 'lucide-react';
 
 const SidebarLink = ({ to, icon: Icon, children, isCollapsed, state = {}, className = '' }) => {
   const location = useLocation();
@@ -43,7 +43,7 @@ const Layout = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const pathParts = location.pathname.split('/').filter(p => p);
-  const activePatientId = (pathParts[0] === 'hub' || pathParts[0] === 'history') ? pathParts[1] : null;
+  const activePatientId = (pathParts[0] === 'hub' || pathParts[0] === 'history' || pathParts[0] === 'billing') ? pathParts[1] : null;
   const navigate = useNavigate();
 
   // Global Keyboard Shortcuts (Cmd+K / Ctrl+K for Search)
@@ -99,24 +99,29 @@ const Layout = ({ children }) => {
           <SidebarLink to="/search" icon={Search} isCollapsed={isCollapsed}>Clinical Queue <span className="ml-auto text-[9px] font-bold text-zinc-500 bg-zinc-800/50 px-1.5 py-0.5 rounded border border-zinc-700 font-mono tracking-widest">⌘K</span></SidebarLink>
           <SidebarLink to="/register" icon={Users} isCollapsed={isCollapsed}>Patient Reg</SidebarLink>
           <SidebarLink to="/appointments" icon={Calendar} isCollapsed={isCollapsed}>Appointments</SidebarLink>
+          <SidebarLink to={activePatientId ? `/billing/${activePatientId}` : '/billing'} icon={CreditCard} isCollapsed={isCollapsed}>Billing</SidebarLink>
 
           <div className={`mt-8 px-5 mb-2 ${isCollapsed ? 'text-center' : ''}`}>
             <span className={`text-[10px] font-bold text-zinc-600 uppercase tracking-widest ${isCollapsed ? 'hidden' : 'inline-block'}`}>Clinical Record</span>
             {isCollapsed && <div className="h-px w-6 mx-auto bg-zinc-800 mt-2"></div>}
           </div>
-          <SidebarLink to={activePatientId ? `/hub/${activePatientId}` : '/hub'}
-            icon={Activity}
-            isCollapsed={isCollapsed}
-          >
-            Clinical Hub
-          </SidebarLink>
-          <SidebarLink 
-            to={activePatientId ? `/history/${activePatientId}` : '/history'}
-            icon={Clock}
-            isCollapsed={isCollapsed}
-          >
-            Visit History
-          </SidebarLink>
+          {['Admin', 'Dentist'].includes(user?.role) && (
+            <>
+              <SidebarLink to={activePatientId ? `/hub/${activePatientId}` : '/hub'}
+                icon={Activity}
+                isCollapsed={isCollapsed}
+              >
+                Clinical Hub
+              </SidebarLink>
+              <SidebarLink 
+                to={activePatientId ? `/history/${activePatientId}` : '/history'}
+                icon={Clock}
+                isCollapsed={isCollapsed}
+              >
+                Visit History
+              </SidebarLink>
+            </>
+          )}
 
           {['Admin', 'Dentist', 'Receptionist'].includes(user?.role) && (
             <>
@@ -203,12 +208,14 @@ const AuthenticatedApp = () => {
             <Route path="/register" element={<Registration />} />
             <Route path="/search" element={<SearchQueue />} />
             <Route path="/appointments" element={<Appointments />} />
+            <Route path="/billing/:patientId" element={<BillingPage />} />
+            <Route path="/billing" element={<BillingPage />} />
 
-            {/* Clinical Routes */}
-            <Route path="/hub/:patientId" element={<ClinicalHub />} />
-            <Route path="/hub" element={<ClinicalHub />} />
-            <Route path="/history/:patientId" element={<PatientHistory />} />
-            <Route path="/history" element={<PatientHistory />} />
+            {/* Clinical Routes — Admin and Dentist only */}
+            <Route path="/hub/:patientId" element={['Admin', 'Dentist'].includes(user?.role) ? <ClinicalHub /> : <AccessDenied />} />
+            <Route path="/hub" element={['Admin', 'Dentist'].includes(user?.role) ? <ClinicalHub /> : <AccessDenied />} />
+            <Route path="/history/:patientId" element={['Admin', 'Dentist'].includes(user?.role) ? <PatientHistory /> : <AccessDenied />} />
+            <Route path="/history" element={['Admin', 'Dentist'].includes(user?.role) ? <PatientHistory /> : <AccessDenied />} />
 
             <Route path="/reports" element={['Admin', 'Dentist', 'Receptionist'].includes(user?.role) ? <Reports /> : <AccessDenied />} />
             <Route path="/users" element={user?.role === 'Admin' ? <UserManagement /> : <AccessDenied />} />

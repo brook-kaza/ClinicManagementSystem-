@@ -7,7 +7,7 @@ const UserManagement = () => {
     const { user } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [newUser, setNewUser] = useState({ username: '', full_name: '', password: '', role: 'Receptionist' });
+    const [newUser, setNewUser] = useState({ username: '', full_name: '', password: '', role: 'Receptionist', license_no: '' });
     const [resetData, setResetData] = useState({ userId: null, newPassword: '' });
     const [message, setMessage] = useState('');
 
@@ -38,7 +38,7 @@ const UserManagement = () => {
 
     const handleCreateUser = async (e) => {
         e.preventDefault();
-        try { await api.post('/users', newUser); setMessage('User account created successfully'); setNewUser({ username: '', full_name: '', password: '', role: 'Receptionist' }); fetchUsers(); setTimeout(() => setMessage(''), 3000); }
+        try { await api.post('/users', newUser); setMessage('User account created successfully'); setNewUser({ username: '', full_name: '', password: '', role: 'Receptionist', license_no: '' }); fetchUsers(); setTimeout(() => setMessage(''), 3000); }
         catch (err) { setMessage(err.response?.data?.detail || 'Account creation failed'); setTimeout(() => setMessage(''), 3000); }
     };
 
@@ -106,9 +106,16 @@ const UserManagement = () => {
                             <label className={labelCls}>Access Level</label>
                             <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })} className={`${inputCls} cursor-pointer appearance-none bg-no-repeat bg-[right_1rem_center] bg-[length:1.2em_1.2em]`} style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")` }}>
                                 <option value="Receptionist">Receptionist (Standard)</option>
+                                <option value="Dentist">Dentist (Clinical)</option>
                                 <option value="Admin">Administrator (Elevated)</option>
                             </select>
                         </div>
+                        {(newUser.role === 'Dentist' || newUser.role === 'Admin') && (
+                            <div>
+                                <label className={labelCls}>License No. (for documents)</label>
+                                <input type="text" value={newUser.license_no} onChange={e => setNewUser({ ...newUser, license_no: e.target.value })} className={inputCls} placeholder="e.g. 2026/AA/PROF/12345" />
+                            </div>
+                        )}
                         <div className="pt-2">
                             <button className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-600/30 transition-all text-sm focus-ring flex items-center justify-center gap-2 group">
                                 <UserPlus className="w-4 h-4 group-hover:scale-110 transition-transform" /> Generate Account
@@ -153,7 +160,9 @@ const UserManagement = () => {
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-bold text-zinc-900 tracking-wide">{u.full_name || u.username}</div>
-                                                    <div className="text-[10px] text-zinc-400 font-mono font-medium mt-0.5 uppercase">@{u.username}</div>
+                                                    <div className="text-[10px] text-zinc-400 font-mono font-medium mt-0.5">
+                                                        @{u.username} {u.license_no && <span className="text-indigo-500 font-bold ml-1">· Lic: {u.license_no}</span>}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
@@ -161,6 +170,7 @@ const UserManagement = () => {
                                             <select value={u.role} onChange={(e) => handleRoleChange(u, e.target.value)} disabled={u.id === user.id}
                                                 className="text-[11px] font-bold border border-zinc-200 rounded-lg py-2 px-3 bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider text-zinc-700 cursor-pointer shadow-sm hover:border-zinc-300 transition-colors appearance-none pr-8 bg-no-repeat bg-[right_0.5rem_center] bg-[length:1em_1em]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%233f3f46' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")` }}>
                                                 <option value="Receptionist">Receptionist</option>
+                                                <option value="Dentist">Dentist</option>
                                                 <option value="Admin">Administrator</option>
                                             </select>
                                         </td>

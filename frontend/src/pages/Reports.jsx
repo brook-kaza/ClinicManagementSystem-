@@ -3,6 +3,7 @@ import { FileText, Download, Calendar, Activity, AlertCircle, TrendingUp, Users,
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import * as xlsx from 'xlsx-js-style';
+import { useAuth } from '../context/AuthContext';
 
 // Helper for generic excel export of simple tables
 const exportToExcel = (data, headers, filename, sheetName = "Data") => {
@@ -59,7 +60,12 @@ const exportToExcel = (data, headers, filename, sheetName = "Data") => {
 
 const Reports = () => {
     const today = new Date();
+    const { user } = useAuth();
     const [activeTab, setActiveTab] = useState('daily_income'); // daily_income, monthly_revenue, patient_stats, outstanding, morbidity
+
+    // --- Doctor Filter State (for Admin) ---
+    const [doctors, setDoctors] = useState([]);
+    const [selectedDoctorId, setSelectedDoctorId] = useState('');
 
     // --- Daily Income State ---
     const [dailyDate, setDailyDate] = useState(today.toISOString().split('T')[0]);
@@ -86,25 +92,34 @@ const Reports = () => {
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const yearOptions = Array.from({ length: 6 }, (_, i) => today.getFullYear() - 5 + i).reverse();
 
+    useEffect(() => {
+        if (user?.role === 'Admin') {
+            api.get('/users/doctors').then(res => setDoctors(res.data)).catch(console.error);
+        }
+    }, [user]);
+
     // Fetch master function based on active tab
     const fetchData = async () => {
         setLoading(true);
         setError(null);
         try {
+            const doctorParam = (user?.role === 'Admin' && selectedDoctorId) ? `&doctor_id=${selectedDoctorId}` : '';
+            const doctorQuery = (user?.role === 'Admin' && selectedDoctorId) ? `?doctor_id=${selectedDoctorId}` : '';
+
             if (activeTab === 'daily_income') {
-                const res = await api.get(`/reports/daily-income?report_date=${dailyDate}`);
+                const res = await api.get(`/reports/daily-income?report_date=${dailyDate}${doctorParam}`);
                 setDailyData(res.data);
             } else if (activeTab === 'monthly_revenue') {
-                const res = await api.get(`/reports/monthly-revenue?year=${revenueYear}`);
+                const res = await api.get(`/reports/monthly-revenue?year=${revenueYear}${doctorParam}`);
                 setRevenueData(res.data);
             } else if (activeTab === 'patient_stats') {
-                const res = await api.get(`/reports/patient-statistics`);
+                const res = await api.get(`/reports/patient-statistics${doctorQuery}`);
                 setStatsData(res.data);
             } else if (activeTab === 'outstanding') {
-                const res = await api.get(`/reports/outstanding-payments`);
+                const res = await api.get(`/reports/outstanding-payments${doctorQuery}`);
                 setOutstandingData(res.data);
             } else if (activeTab === 'morbidity') {
-                const res = await api.get(`/reports/morbidity?month=${morbidityMonth}&year=${morbidityYear}`);
+                const res = await api.get(`/reports/morbidity?month=${morbidityMonth}&year=${morbidityYear}${doctorParam}`);
                 setMorbidityData(res.data);
             }
         } catch (err) {
@@ -120,7 +135,7 @@ const Reports = () => {
     useEffect(() => {
         fetchData();
         // eslint-disable-next-line
-    }, [activeTab, dailyDate, revenueYear, morbidityMonth, morbidityYear]);
+    }, [activeTab, dailyDate, revenueYear, morbidityMonth, morbidityYear, selectedDoctorId]);
 
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -588,13 +603,37 @@ const Reports = () => {
                     <div>
                         <h2 className="text-2xl sm:text-3xl font-bold text-white font-heading tracking-tight mb-1">Reports & Analytics</h2>
                         <p className="text-zinc-400 font-medium text-sm">
-                            Financial and clinical insights generation.
+                            {user?.role === 'Dentist'
+                                ? `Personal clinical and financial insights for Dr. ${user.full_name || user.username}.`
+                                : 'Clinic-wide and per-doctor financial and clinical insights.'}
                         </p>
                     </div>
                 </div>
 
                 {/* Global Actions depending on tab */}
-                <div className="relative z-10">
+                <div className="relative z-10 flex flex-wrap items-center gap-3">
+                    {user?.role === 'Admin' && doctors.length > 0 && (
+                        <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-1.5 flex items-center">
+                            <span className="text-zinc-400 text-xs font-bold uppercase tracking-wider pl-3 pr-2">Doctor:</span>
+                            <select
+                                value={selectedDoctorId}
+                                onChange={e => setSelectedDoctorId(e.target.value)}
+                                className="bg-zinc-800 text-white font-bold text-xs p-2 outline-none rounded-lg border-none cursor-pointer"
+                            >
+                                <option value="">All Doctors (Clinic-Wide)</option>
+                                {doctors.map(d => (
+                                    <option key={d.id} value={d.id}>
+                                        {d.full_name || d.username}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    {user?.role === 'Dentist' && (
+                        <div className="px-4 py-2 bg-indigo-500/20 border border-indigo-500/30 text-indigo-200 rounded-xl text-xs font-bold">
+                            My Personal Records
+                        </div>
+                    )}
                     {activeTab === 'daily_income' && (
                         <div className="bg-white/10 backdrop-blur border border-white/20 rounded-xl p-1.5 flex items-center">
                             <span className="text-zinc-400 text-xs font-bold uppercase tracking-wider pl-4 pr-2">Date:</span>

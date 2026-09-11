@@ -367,6 +367,11 @@ const PatientHistory = () => {
                                             <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-1.5 bg-zinc-50 px-2 py-1 rounded-md border border-zinc-100">
                                                 <Clock className="w-3.5 h-3.5" /> {new Date(visit.visit_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
+                                            {visit.doctor && (
+                                                <span className="bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border border-indigo-100 flex items-center gap-1">
+                                                    Dr. {visit.doctor.full_name || visit.doctor.username}
+                                                </span>
+                                            )}
                                             {visit.visit_consent && (
                                                 <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border border-emerald-200 flex items-center gap-1">
                                                     <CheckCircle className="w-3 h-3" /> Verbal Consent Recorded
