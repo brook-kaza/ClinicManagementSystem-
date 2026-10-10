@@ -18,7 +18,19 @@ const PatientBilling = ({ patientId }) => {
     // Form States — Line Items
     const emptyItem = { description: '', unit_price: '' };
     const [invoiceItems, setInvoiceItems] = useState([{ ...emptyItem }]);
-    const [newPayment, setNewPayment] = useState({ amount_paid: '', payment_method: 'Cash' });
+    const [newPayment, setNewPayment] = useState({ amount_paid: '', payment_method: 'Cash', bank_name: 'CBE' });
+
+    const BANK_OPTIONS = [
+        'CBE',
+        'Abyssinia',
+        'Awash',
+        'Dashen',
+        'Oromia',
+        'Telebirr',
+        'eBirr Coopay',
+        'eBirr-KAAFI',
+        'eBirr Merchant',
+    ];
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
     const [doctors, setDoctors] = useState([]);
     const [selectedDoctorId, setSelectedDoctorId] = useState('');
@@ -112,16 +124,19 @@ const PatientBilling = ({ patientId }) => {
 
     const handleLogPayment = async (e) => {
         e.preventDefault();
+        const finalMethod = newPayment.payment_method === 'Bank Transfer'
+            ? `Bank Transfer - ${newPayment.bank_name}`
+            : newPayment.payment_method;
         try {
             const res = await api.post(`/billing/invoices/${selectedInvoice.id}/payments`, {
                 amount_paid: parseFloat(newPayment.amount_paid),
-                payment_method: newPayment.payment_method
+                payment_method: finalMethod
             });
 
             // Refresh invoice list to reflect new payment and status
             fetchInvoices();
 
-            setNewPayment({ amount_paid: '', payment_method: 'Cash' });
+            setNewPayment({ amount_paid: '', payment_method: 'Cash', bank_name: 'CBE' });
             setShowPaymentModal(false);
             setSelectedInvoice(null);
             toast.success("Payment logged successfully");
@@ -495,6 +510,21 @@ const PatientBilling = ({ patientId }) => {
                                     <option>Insurance</option>
                                 </select>
                             </div>
+                            {newPayment.payment_method === 'Bank Transfer' && (
+                                <div>
+                                    <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Bank / Service</label>
+                                    <select
+                                        required
+                                        value={newPayment.bank_name}
+                                        onChange={e => setNewPayment({ ...newPayment, bank_name: e.target.value })}
+                                        className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                                    >
+                                        {BANK_OPTIONS.map(bank => (
+                                            <option key={bank} value={bank}>{bank}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                             <div className="flex gap-3 pt-4">
                                 <button type="button" onClick={() => { setShowPaymentModal(false); setSelectedInvoice(null); }} className="px-4 py-3 rounded-xl border border-zinc-200 font-bold text-sm text-zinc-600 flex-1 hover:bg-zinc-50">Cancel</button>
                                 <button type="submit" className="px-4 py-3 rounded-xl bg-emerald-600 font-bold text-sm text-white flex-1 hover:bg-emerald-700 shadow-md shadow-emerald-600/20">Confirm Payment</button>
